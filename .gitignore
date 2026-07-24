@@ -1,0 +1,52 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Data and temp
+data/youtube/vtt/
+tmp/
+
+# Local tool state
+.claude/
+supabase/.temp/
+# ── Clarity repo: exclude legacy MindLock/Prayerlock material (kept on disk, not pushed) ──
+/data/
+/Prayerlock onboarding/
+/MindLock-Expo/
+/scripts/
+/beta-site/
+/website/
+/tmp/
+/mindlock-database-dashboard.html
+/MINDLOCK_PLAYBOOK.md
+/AUDIT_2026-04-25.md
+/CLAUDE_HANDOFF.md
+/playbook-session9-updates.md
+/bun.lockb
+/bun.lock
