@@ -46,6 +46,40 @@ export const CameraLens = ({ size = 24, ...p }: P) => (
   <svg {...base(size)} {...p}><rect x="3" y="7" width="18" height="13" rx="3" stroke="currentColor" strokeWidth="1.8" /><circle cx="12" cy="13.5" r="3.4" stroke="currentColor" strokeWidth="1.8" /><path d="M9 7l1.5-2.5h3L15 7" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" /></svg>
 );
 
+export const Plus = ({ size = 24, ...p }: P) => (
+  <svg {...base(size)} {...p}><path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" /></svg>
+);
+export const X = ({ size = 24, ...p }: P) => (
+  <svg {...base(size)} {...p}><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" /></svg>
+);
+export const Flame = ({ size = 24, ...p }: P) => (
+  <svg {...base(size)} {...p}><path d="M12 3s5 4.2 5 8.6a5 5 0 0 1-10 0C7 9.4 9 8 9 8s.4 2 1.6 2C11.8 10 12 7 12 3z" stroke="currentColor" strokeWidth="1.9" strokeLinejoin="round" /><path d="M12 21a4 4 0 0 0 4-4c0-2-2-3-4-5-2 2-4 3-4 5a4 4 0 0 0 4 4z" stroke="currentColor" strokeWidth="1.9" strokeLinejoin="round" /></svg>
+);
+export const ChartIcon = ({ size = 24, ...p }: P) => (
+  <svg {...base(size)} {...p}><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
+);
+export const Trophy = ({ size = 24, ...p }: P) => (
+  <svg {...base(size)} {...p}><path d="M7 4h10v5a5 5 0 0 1-10 0V4z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" /><path d="M7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3M9 20h6M12 14v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
+);
+export const Sound = ({ size = 24, ...p }: P) => (
+  <svg {...base(size)} {...p}><path d="M4 9v6h4l5 4V5L8 9H4z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" /><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
+);
+export const SoundOff = ({ size = 24, ...p }: P) => (
+  <svg {...base(size)} {...p}><path d="M4 9v6h4l5 4V5L8 9H4z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" /><path d="M17 9.5l4 5M21 9.5l-4 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
+);
+export const Shield = ({ size = 24, ...p }: P) => (
+  <svg {...base(size)} {...p}><path d="M12 3l8 3v6c0 5-3.4 8.3-8 9-4.6-.7-8-4-8-9V6l8-3z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" /><path d="M9 12l2 2 4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+);
+export const Sun = ({ size = 24, ...p }: P) => (
+  <svg {...base(size)} {...p}><circle cx="12" cy="12" r="4.2" stroke="currentColor" strokeWidth="2" /><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
+);
+export const Search = ({ size = 24, ...p }: P) => (
+  <svg {...base(size)} {...p}><circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" /><path d="M16.5 16.5L21 21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
+);
+export const Trash = ({ size = 24, ...p }: P) => (
+  <svg {...base(size)} {...p}><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+);
+
 // iOS status-bar glyphs
 export const CellBars = (p: SVGProps<SVGSVGElement>) => (
   <svg width="18" height="12" viewBox="0 0 18 12" {...p}><rect x="0" y="7" width="3" height="5" rx="1" fill="#fff" /><rect x="5" y="4.5" width="3" height="7.5" rx="1" fill="#fff" /><rect x="10" y="2" width="3" height="10" rx="1" fill="#fff" /><rect x="15" y="0" width="3" height="12" rx="1" fill="#fff" /></svg>

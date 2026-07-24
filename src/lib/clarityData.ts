@@ -56,7 +56,7 @@ export const SEED_TODOS: Todo[] = [
 export const COMMUNITY: CommunityMember[] = [
   { id: "c1", name: "Maya", color: "linear-gradient(135deg,#ff9a6c,#ff5e8a)", focus: "Design portfolio revamp", projects: ["Portfolio site", "Case study writeup", "Three Dribbble shots"], cheers: 34 },
   { id: "c2", name: "Devin", color: "linear-gradient(135deg,#6cc7ff,#4b7bff)", focus: "Ship the side project", projects: ["MVP backend", "Landing page", "First 10 beta invites"], cheers: 28 },
-  { id: "c3", name: "Aisha", color: "linear-gradient(135deg,#c4b2ff,#7a4bff)", focus: "Study for the CFA", projects: ["Ethics module", "One practice exam", "Review weak spots"], cheers: 41 },
+  { id: "c3", name: "Aisha", color: "linear-gradient(135deg,#d6a4ff,#8b5cf6)", focus: "Study for the CFA", projects: ["Ethics module", "One practice exam", "Review weak spots"], cheers: 41 },
   { id: "c4", name: "Leo", color: "linear-gradient(135deg,#5ffc7b,#0fbb4d)", focus: "Write every day", projects: ["Morning pages", "Two short essays", "Send the newsletter"], cheers: 19 },
 ];
 
@@ -66,6 +66,16 @@ export const QUOTES: { text: string; author: string }[] = [
   { text: "The successful warrior is the average person, with laser-like focus.", author: "Bruce Lee" },
   { text: "What you stay focused on will grow.", author: "Roy T. Bennett" },
   { text: "Concentrate all your thoughts upon the work at hand.", author: "Alexander Graham Bell" },
+];
+
+// Shown on the block screen, one per pull, so it never becomes wallpaper.
+export const BLOCK_LINES = [
+  "The task feels heavier in your head than it will in your hands. Give it ten minutes and watch it shrink.",
+  "Nothing in there changed in the last four minutes. The thing you were doing did.",
+  "You did not open this because you wanted it. You opened it because the last thing got hard.",
+  "The feed will still be there tonight. This block of attention will not.",
+  "You are one small, boring step from the part where it starts to feel good.",
+  "Whatever is waiting in there was designed by people who are paid for your evening.",
 ];
 
 export const TASK_SUGGESTIONS = [

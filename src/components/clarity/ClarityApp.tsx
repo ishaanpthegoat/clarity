@@ -1,8 +1,10 @@
 // Clarity — root shell. Device frame + view router + persistent chrome.
+import { useEffect } from "react";
 import { ClarityProvider, useClarity } from "@/lib/clarityStore";
 import ErrorBoundary from "./ErrorBoundary";
 import StatusBar from "./StatusBar";
 import TabBar from "./TabBar";
+import CommandPalette from "./CommandPalette";
 import Splash from "./screens/Splash";
 import Intro from "./screens/Intro";
 import Home from "./screens/Home";
@@ -17,6 +19,8 @@ import Checkin from "./screens/Checkin";
 import Springboard from "./screens/Springboard";
 import Paywall from "./screens/Paywall";
 import Articles from "./screens/Articles";
+import Insights from "./screens/Insights";
+import Milestones from "./screens/Milestones";
 
 function Screens() {
   const { state } = useClarity();
@@ -35,27 +39,58 @@ function Screens() {
     case "spring": return <Springboard />;
     case "paywall": return <Paywall />;
     case "articles": return <Articles />;
+    case "insights": return <Insights />;
+    case "milestones": return <Milestones />;
     default: return <Home />;
   }
 }
 
+/** Single-key shortcuts, ignored while the user is typing. */
+function useShortcuts() {
+  const { state, actions } = useClarity();
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const el = e.target as HTMLElement | null;
+      if (el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))) return;
+      if (state.paletteOpen) return;
+      if (state.view === "splash" || state.view === "intro") return;
+
+      switch (e.key.toLowerCase()) {
+        case "h": actions.go("home"); break;
+        case "f": actions.startFocus(); break;
+        case "l": actions.toggleLock(); break;
+        case "i": actions.go("insights"); break;
+        case ",": actions.go("settings"); break;
+        case "escape": if (state.view !== "home") actions.go("home"); break;
+        default: return;
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [state.view, state.paletteOpen, actions]);
+}
+
 function Device() {
   const { state } = useClarity();
+  useShortcuts();
   const onSplash = state.view === "splash";
+
   return (
     <div
       className="clarity-root grid min-h-[100dvh] w-full place-items-center"
-      style={{ background: "radial-gradient(120% 80% at 50% -10%,#161226 0%,#050507 55%,#000 100%)" }}
+      style={{ background: "var(--stage)" }}
     >
       <div
-        className="relative w-full max-w-[440px] overflow-hidden bg-black md:my-6 md:rounded-[44px] md:border md:border-[#26232f] md:shadow-[0_40px_90px_-20px_rgba(0,0,0,.9),0_0_120px_-30px_rgba(139,107,255,.35)]"
+        className="relative w-full max-w-[440px] overflow-hidden bg-background md:my-6 md:rounded-[44px] md:border md:border-sand-line md:shadow-[0_40px_90px_-20px_rgba(0,0,0,.9),0_0_120px_-30px_rgba(240,144,43,.28)]"
         style={{ height: "100dvh", maxHeight: "min(100dvh, 900px)" }}
       >
         <StatusBar />
         <Screens />
         <TabBar />
+        <CommandPalette />
         {!onSplash && (
-          <div className="pointer-events-none absolute bottom-[9px] left-1/2 z-[90] h-[5px] w-[134px] -translate-x-1/2 rounded-[3px] bg-white/40" />
+          <div className="pointer-events-none absolute bottom-[9px] left-1/2 z-[90] h-[5px] w-[134px] -translate-x-1/2 rounded-[3px] bg-foreground/30" />
         )}
       </div>
     </div>

@@ -1,7 +1,6 @@
 // Clarity — full cinematic first-run intro. Full-bleed Higgsfield media per scene,
 // bottom-anchored copy + CTA (always visible), keyed crossfades.
 import { useState } from "react";
-import { motion } from "framer-motion";
 import { useClarity } from "@/lib/clarityStore";
 import LEDLogo from "../LEDLogo";
 
@@ -18,7 +17,7 @@ type Scene = {
 const SCENES: Scene[] = [
   {
     media: "/clarity/aurora.mp4", kind: "video", brand: true,
-    body: "Lock in. Get clear.", cta: "Show me how",
+    body: "Get back your clarity.", cta: "Show me how",
   },
   {
     media: "/clarity/intro-distraction.mp4", kind: "video",
@@ -54,55 +53,95 @@ export default function Intro() {
   const next = () => (last ? actions.finishIntro() : setI((v) => v + 1));
 
   return (
-    <div className="anim-fadeIn absolute inset-0 overflow-hidden bg-black">
-      {/* full-bleed media (keyed crossfade) */}
-      <motion.div key={"m" + i} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6 }} className="absolute inset-0">
+    <div className="anim-fadeIn absolute inset-0 overflow-hidden bg-background">
+      {/* full-bleed media — remounted per scene so the CSS fade replays */}
+      <div key={"m" + i} className="anim-fadeIn absolute inset-0" style={{ animationDuration: ".6s" }}>
         {scene.kind === "video" ? (
           <video className="h-full w-full object-cover" src={scene.media} autoPlay muted loop playsInline />
         ) : (
-          <img className="h-full w-full object-cover" src={scene.media} alt="" />
+          <img
+            className="h-full w-full object-cover"
+            src={scene.media}
+            alt=""
+            width={440}
+            height={900}
+            fetchPriority="high"
+          />
         )}
-      </motion.div>
+      </div>
+
+      {/* warm the footage into the spice palette */}
+      <div
+        className="pointer-events-none absolute inset-0 opacity-70 mix-blend-color"
+        style={{ background: "linear-gradient(160deg,#f5c542,#c2410c)" }}
+      />
 
       {/* legibility gradient */}
-      <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(5,3,8,.35) 0%, rgba(5,3,8,.1) 32%, rgba(5,3,8,.72) 66%, #050308 100%)" }} />
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            "linear-gradient(to bottom, hsl(20 30% 3% / .35) 0%, hsl(20 30% 3% / .1) 32%, hsl(20 30% 3% / .78) 66%, hsl(var(--void)) 100%)",
+        }}
+      />
 
       {/* brand centerpiece on scene 0 */}
       {scene.brand && (
         <div className="anim-floaty pointer-events-none absolute inset-x-0 top-[34%] flex flex-col items-center gap-7">
-          <div style={{ filter: "drop-shadow(0 0 26px rgba(140,90,255,.55))" }}>
+          <div style={{ filter: "drop-shadow(0 0 26px hsl(var(--spice-400) / .55))" }}>
             <LEDLogo />
           </div>
         </div>
       )}
 
-      <button onClick={actions.finishIntro} className="absolute right-5 top-[62px] z-10 text-[14px] font-semibold text-white/60">
+      <button
+        onClick={actions.finishIntro}
+        className="absolute right-2 top-[52px] z-10 grid h-11 min-w-11 place-items-center px-3 text-[14px] font-semibold text-white/70 transition-colors hover:text-white"
+      >
         Skip
       </button>
 
       {/* bottom-anchored copy + controls (always visible) */}
       <div className="absolute inset-x-0 bottom-0 z-[2] px-7 pb-9 pt-6">
-        <motion.div key={"t" + i} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, ease: [0.2, 0.8, 0.2, 1] }}>
-          {scene.kicker && <div className="text-[11px] font-bold tracking-[3px] text-[#a394ff]">{scene.kicker}</div>}
-          {scene.title && <div className="mt-2.5 text-[29px] font-extrabold leading-[1.08] tracking-[-0.8px]">{scene.title}</div>}
-          <div className={(scene.title ? "mt-3 " : "") + "max-w-[340px] text-[16px] leading-[1.5] text-[#cbc6da]"}>{scene.body}</div>
-        </motion.div>
+        <div key={"t" + i} className="anim-cardUp" style={{ animationDuration: ".45s" }}>
+          {scene.kicker && <div className="eyebrow">{scene.kicker}</div>}
+          {scene.title && (
+            <h1 className="font-display mt-2.5 text-[34px] font-semibold uppercase leading-[1.02] tracking-[0.01em]">
+              {scene.title}
+            </h1>
+          )}
+          <p className={(scene.title ? "mt-3 " : "") + "max-w-[340px] text-[16px] leading-[1.5] text-foreground/80"}>
+            {scene.body}
+          </p>
+        </div>
 
-        <div className="mb-5 mt-6 flex gap-[7px]">
+        {/* The dot is 7px but the hit area is 44px — thumbs are not cursors. */}
+        <div className="mb-2 mt-3 flex">
           {SCENES.map((_, idx) => (
             <button
               key={idx}
               onClick={() => setI(idx)}
-              className="h-[7px] rounded-full transition-all"
-              style={{ width: idx === i ? 22 : 7, background: idx === i ? "#8b6bff" : "rgba(255,255,255,.25)" }}
-            />
+              aria-label={`Go to step ${idx + 1} of ${SCENES.length}`}
+              aria-current={idx === i ? "step" : undefined}
+              // Full height, narrow width on purpose — the CTA advances scenes.
+              data-secondary-affordance="true"
+              className="grid h-11 place-items-center px-[3.5px]"
+            >
+              <span
+                className="block h-[7px] rounded-full transition-[width,background-color] duration-300"
+                style={{
+                  width: idx === i ? 22 : 7,
+                  background: idx === i ? "hsl(var(--spice-400))" : "hsl(var(--foreground) / .28)",
+                }}
+              />
+            </button>
           ))}
         </div>
 
         <button
           onClick={next}
-          className="h-[58px] w-full rounded-[18px] text-[17px] font-bold text-white shadow-clarity-glow"
-          style={{ background: "linear-gradient(135deg,#9d7bff,#6a4bd6)" }}
+          className="h-[58px] w-full rounded-[18px] text-[17px] font-bold text-white shadow-spice-glow"
+          style={{ background: "var(--spice-grad)" }}
         >
           {scene.cta}
         </button>

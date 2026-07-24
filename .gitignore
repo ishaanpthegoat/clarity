@@ -35,6 +35,11 @@ tmp/
 # Local tool state
 .claude/
 supabase/.temp/
+
+# Playwright output — regenerate with `npx playwright test`
+test-results/
+e2e/shots/
+playwright-report/
 # ── Clarity repo: exclude legacy MindLock/Prayerlock material (kept on disk, not pushed) ──
 /data/
 /Prayerlock onboarding/

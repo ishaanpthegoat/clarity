@@ -20,12 +20,12 @@ export default function ClaritySwitch({ on, onClick, size = "md", ...rest }: Pro
       role="switch"
       aria-checked={on}
       onClick={onClick}
-      className="relative flex-none rounded-full transition-colors duration-200"
+      className="tap-expand flex-none rounded-full transition-colors duration-200"
       style={{
         width: w,
         height: h,
-        background: on ? "#8b6bff" : "rgba(255,255,255,.14)",
-        border: "1px solid " + (on ? "rgba(139,107,255,.65)" : "rgba(255,255,255,.16)"),
+        background: on ? "hsl(var(--spice-500))" : "rgba(255,255,255,.14)",
+        border: "1px solid " + (on ? "hsl(var(--spice-400) / .65)" : "rgba(255,255,255,.16)"),
       }}
       {...rest}
     >

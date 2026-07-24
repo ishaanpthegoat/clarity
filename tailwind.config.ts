@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import animate from "tailwindcss-animate";
 
 export default {
   darkMode: ["class"],
@@ -47,30 +48,37 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        gold: "hsl(var(--gold))",
-        "gold-glow": "hsl(var(--gold-glow))",
-        navy: "hsl(var(--navy))",
-        charcoal: "hsl(var(--charcoal))",
-        clarity: {
-          50: "hsl(var(--clarity-50))",
-          200: "hsl(var(--clarity-200))",
-          300: "hsl(var(--clarity-300))",
-          400: "hsl(var(--clarity-400))",
-          500: "hsl(var(--clarity-500))",
-          600: "hsl(var(--clarity-600))",
-          700: "hsl(var(--clarity-700))",
+        /* Arrakis surfaces — so no screen hand-rolls its own brown */
+        void: "hsl(var(--void))",
+        sietch: {
+          DEFAULT: "hsl(var(--sietch))",
+          raised: "hsl(var(--sietch-raised))",
+        },
+        sand: {
+          line: "hsl(var(--sand-line))",
+        },
+        /* The spice ramp — the app's only accent ladder */
+        spice: {
+          50: "hsl(var(--spice-50))",
+          100: "hsl(var(--spice-100))",
+          200: "hsl(var(--spice-200))",
+          300: "hsl(var(--spice-300))",
+          400: "hsl(var(--spice-400))",
+          500: "hsl(var(--spice-500))",
+          600: "hsl(var(--spice-600))",
+          700: "hsl(var(--spice-700))",
+          800: "hsl(var(--spice-800))",
         },
       },
       fontFamily: {
-        sans: [
-          "-apple-system", "BlinkMacSystemFont", "SF Pro Display", "SF Pro Text",
-          "Inter", "system-ui", "sans-serif",
-        ],
+        sans: ["Barlow", "system-ui", "-apple-system", "BlinkMacSystemFont", "sans-serif"],
+        display: ["Barlow Condensed", "Barlow", "system-ui", "sans-serif"],
+        epigraph: ["Cormorant Garamond", "Georgia", "Times New Roman", "serif"],
       },
       boxShadow: {
-        "clarity-glow": "0 14px 40px -8px rgba(139,107,255,.5)",
-        "clarity-glow-lg": "0 12px 36px -8px rgba(139,107,255,.6)",
-        "clarity-card": "0 6px 16px -6px rgba(0,0,0,.6)",
+        "spice-glow": "0 14px 40px -10px rgba(240,144,43,.45)",
+        "spice-glow-lg": "0 16px 48px -10px rgba(240,144,43,.6)",
+        "sietch-card": "0 6px 16px -6px rgba(0,0,0,.7)",
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -94,9 +102,9 @@ export default {
           "0%": { opacity: "0", transform: "translateY(40px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
         },
-        "pulse-gold": {
-          "0%, 100%": { boxShadow: "0 0 20px hsl(43 72% 52% / 0.2)" },
-          "50%": { boxShadow: "0 0 40px hsl(43 72% 52% / 0.5)" },
+        "pulse-spice": {
+          "0%, 100%": { boxShadow: "0 0 20px hsl(31 87% 55% / 0.2)" },
+          "50%": { boxShadow: "0 0 40px hsl(31 87% 55% / 0.5)" },
         },
         "streak-pop": {
           "0%": { transform: "scale(0.5)", opacity: "0" },
@@ -119,9 +127,9 @@ export default {
           "0%, 100%": { transform: "translateY(0)" },
           "50%": { transform: "translateY(-5px)" },
         },
-        "clarity-glow": {
-          "0%, 100%": { boxShadow: "0 14px 40px -8px rgba(139,107,255,.5)" },
-          "50%": { boxShadow: "0 14px 52px -6px rgba(139,107,255,.75)" },
+        "spice-glow": {
+          "0%, 100%": { boxShadow: "0 14px 40px -10px rgba(240,144,43,.45)" },
+          "50%": { boxShadow: "0 14px 52px -8px rgba(240,144,43,.7)" },
         },
       },
       animation: {
@@ -129,15 +137,15 @@ export default {
         "accordion-up": "accordion-up 0.2s ease-out",
         "fade-in": "fade-in 0.5s ease-out forwards",
         "slide-up": "slide-up 0.6s ease-out forwards",
-        "pulse-gold": "pulse-gold 2s ease-in-out infinite",
+        "pulse-spice": "pulse-spice 2s ease-in-out infinite",
         "streak-pop": "streak-pop 0.6s ease-out forwards",
         shimmer: "shimmer 2s linear infinite",
         "card-up": "card-up 0.6s cubic-bezier(.2,.7,.2,1) both",
         "pop-in": "pop-in 0.6s cubic-bezier(.2,.8,.2,1) both",
         floaty: "floaty 5s ease-in-out infinite",
-        "clarity-glow": "clarity-glow 3.5s ease-in-out infinite",
+        "spice-glow": "spice-glow 3.5s ease-in-out infinite",
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [animate],
 } satisfies Config;

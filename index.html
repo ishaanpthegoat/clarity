@@ -2,17 +2,27 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+    <!-- viewport-fit=cover for the notch. Pinch zoom stays enabled on purpose:
+         disabling it locks out anyone who needs to magnify the text. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <link rel="icon" type="image/png" href="/clarity/icon.png" />
     <link rel="apple-touch-icon" href="/clarity/icon.png" />
-    <title>Clarity — Lock in. Get clear.</title>
-    <meta name="description" content="Clarity locks away distractions so you can give one thing your full attention. Set your focus, lock the noise, and build the day you meant to have." />
-    <meta name="theme-color" content="#050507" />
+
+    <title>Clarity — Get back your clarity.</title>
+    <meta name="description" content="Clarity locks away distractions so you can give one thing your full attention. Set your focus, lock the noise, and get back the hours the feed was spending for you." />
+    <meta name="theme-color" content="#080604" />
+    <meta name="color-scheme" content="dark light" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
-    <meta property="og:title" content="Clarity — Lock in. Get clear." />
-    <meta property="og:description" content="Lock away distractions, set one focus, and earn your clarity back." />
+    <!-- Barlow carries the UI; preload the two weights above the fold -->
+    <link rel="preload" as="font" type="font/ttf" href="/fonts/Barlow-Regular.ttf" crossorigin />
+    <link rel="preload" as="font" type="font/ttf" href="/fonts/Barlow-Bold.ttf" crossorigin />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+    <meta property="og:title" content="Clarity — Get back your clarity." />
+    <meta property="og:description" content="Lock away distractions, name one focus, and earn your attention back." />
     <meta property="og:type" content="website" />
     <meta property="og:image" content="/clarity/og-image.png" />
 

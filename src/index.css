@@ -1,5 +1,46 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap');
+/* ============================================================
+   CLARITY — type system
+   Barlow (self-hosted, from the supplied family) carries the UI.
+   Barlow Condensed carries display: huge, tracked-out uppercase.
+   Cormorant Garamond italic is reserved for epigraphs only.
+   ============================================================ */
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@200;300;400;500;600;700&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400;1,500&display=swap');
+
+@font-face {
+  font-family: 'Barlow';
+  src: url('/fonts/Barlow-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Barlow';
+  src: url('/fonts/Barlow-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Barlow';
+  src: url('/fonts/Barlow-SemiBold.ttf') format('truetype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Barlow';
+  src: url('/fonts/Barlow-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Barlow';
+  src: url('/fonts/Barlow-ExtraBold.ttf') format('truetype');
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
 
 @tailwind base;
 @tailwind components;
@@ -7,95 +48,120 @@
 
 @layer base {
   :root {
-    /* ===== Clarity — dark violet ===== */
-    --background: 260 30% 2%;
-    --foreground: 0 0% 100%;
+    /* ===== Clarity — Arrakis. Spice on void. =====
+       void    #080604  the open sand at night, warmed to brown
+       sietch  #14100A  stone. every card is cut from it
+       dust    #2A2118  the line where stone meets air
+       spice   #F0902B  melange. the one colour that acts
+       solar   #F5C542  second sun. highlights and celebration
+       ember   #C2410C  the deep end of every gradient
+       bone    #F4EBDD  text, bleached by the sun
+       ash     #8C8073  text that is not talking to you yet
+    */
+    --background: 30 33% 2%;
+    --foreground: 37 51% 91%;
 
-    --card: 250 19% 6%;
-    --card-foreground: 0 0% 100%;
+    --card: 36 33% 6%;
+    --card-foreground: 37 51% 91%;
 
-    --popover: 250 19% 6%;
-    --popover-foreground: 0 0% 100%;
+    --popover: 36 30% 8%;
+    --popover-foreground: 37 51% 91%;
 
-    --primary: 255 100% 71%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 31 87% 55%;
+    --primary-foreground: 30 40% 6%;
 
-    --secondary: 252 25% 20%;
-    --secondary-foreground: 0 0% 100%;
+    --secondary: 30 25% 16%;
+    --secondary-foreground: 37 51% 91%;
 
-    --muted: 250 12% 12%;
-    --muted-foreground: 240 6% 57%;
+    --muted: 32 18% 12%;
+    --muted-foreground: 31 10% 50%;
 
-    --accent: 255 100% 77%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 44 90% 61%;
+    --accent-foreground: 30 40% 6%;
 
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive: 8 75% 52%;
+    --destructive-foreground: 37 51% 95%;
 
-    --border: 252 40% 16%;
-    --input: 252 40% 16%;
-    --ring: 255 100% 71%;
+    --border: 32 30% 15%;
+    --input: 32 30% 15%;
+    --ring: 31 87% 55%;
 
     --radius: 1.25rem;
 
-    /* Clarity brand ramp */
-    --clarity-50: 255 100% 90%;   /* #e6ddff-ish */
-    --clarity-200: 255 100% 85%;  /* #c4b2ff */
-    --clarity-300: 255 100% 77%;  /* #a98cff */
-    --clarity-400: 255 100% 71%;  /* #9d7bff */
-    --clarity-500: 255 100% 71%;  /* #8b6bff */
-    --clarity-600: 258 65% 56%;   /* #6a4bd6 */
-    --clarity-700: 258 100% 65%;  /* #7a4bff */
-    --clarity-grad: linear-gradient(135deg, #9d7bff, #6a4bd6);
-    --clarity-grad-bright: linear-gradient(135deg, #c4b2ff, #7a4bff);
-    --glow-color: 255 100% 71%;
+    /* Spice ramp — the only accent ladder in the app */
+    --spice-50: 42 95% 88%;
+    --spice-100: 40 92% 78%;
+    --spice-200: 44 90% 61%;   /* solar  #F5C542 */
+    --spice-300: 36 92% 58%;
+    --spice-400: 31 87% 55%;   /* spice  #F0902B */
+    --spice-500: 26 88% 48%;
+    --spice-600: 20 85% 42%;
+    --spice-700: 17 88% 40%;   /* ember  #C2410C */
+    --spice-800: 15 80% 30%;
 
-    /* legacy aliases (retuned to violet so old utilities read on-brand) */
-    --gold: 255 100% 71%;
-    --gold-glow: 255 100% 77%;
-    --navy: 250 19% 6%;
-    --charcoal: 260 30% 2%;
+    /* Surfaces, so no screen hand-rolls its own brown */
+    --sand-line: 32 30% 15%;
+    --sietch: 36 33% 6%;
+    --sietch-raised: 34 26% 9%;
+    --void: 30 33% 2%;
+
+    /* A raised surface that reads correctly in both themes — on the dark side
+       it lifts toward the light, on the light side it sinks toward the ink. */
+    --surface-raised: hsl(40 40% 92% / 0.045);
+    --surface-raised-hover: hsl(40 40% 92% / 0.08);
+    /* The desk the phone sits on */
+    --stage: radial-gradient(120% 80% at 50% -10%, hsl(26 45% 9%) 0%, hsl(30 33% 2%) 55%, hsl(20 30% 1%) 100%);
+
+    --spice-grad: linear-gradient(135deg, #f5c542, #e2620f);
+    --spice-grad-soft: linear-gradient(135deg, rgba(245,197,66,.16), rgba(226,98,15,.05));
+    --spice-grad-bright: linear-gradient(135deg, #fbdf8a, #f0902b);
+    --glow-color: 31 87% 55%;
+
+    /* Typography roles */
+    --font-sans: 'Barlow', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-display: 'Barlow Condensed', 'Barlow', system-ui, sans-serif;
+    --font-epigraph: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
   }
 
   .light {
-    --background: 40 30% 97%;
-    --foreground: 225 25% 12%;
+    /* Midday on Arrakis — bleached sand, ink-brown text */
+    --background: 40 44% 95%;
+    --foreground: 28 30% 12%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 225 25% 12%;
+    --card: 42 50% 98%;
+    --card-foreground: 28 30% 12%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 225 25% 12%;
+    --popover: 42 50% 98%;
+    --popover-foreground: 28 30% 12%;
 
-    --primary: 43 72% 45%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 24 88% 44%;
+    --primary-foreground: 42 60% 97%;
 
-    --secondary: 216 15% 60%;
-    --secondary-foreground: 225 25% 12%;
+    --secondary: 36 28% 86%;
+    --secondary-foreground: 28 30% 12%;
 
-    --muted: 40 20% 92%;
-    --muted-foreground: 215 12% 45%;
+    --muted: 38 30% 90%;
+    --muted-foreground: 30 12% 40%;
 
-    --accent: 40 20% 94%;
-    --accent-foreground: 225 25% 12%;
+    --accent: 38 90% 48%;
+    --accent-foreground: 28 40% 10%;
 
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive: 8 72% 46%;
+    --destructive-foreground: 42 60% 97%;
 
-    --border: 40 15% 88%;
-    --input: 40 15% 88%;
-    --ring: 43 72% 45%;
+    --border: 36 26% 84%;
+    --input: 36 26% 84%;
+    --ring: 24 88% 44%;
 
-    --primary: 255 90% 62%;
-    --primary-foreground: 0 0% 100%;
-    --ring: 255 90% 62%;
-    --border: 255 30% 88%;
-    --input: 255 30% 88%;
-    --gold: 255 90% 62%;
-    --gold-glow: 255 90% 68%;
-    --glow-color: 255 90% 62%;
-    --navy: 255 30% 96%;
-    --charcoal: 255 40% 98%;
+    --sand-line: 36 26% 84%;
+    --sietch: 42 50% 98%;
+    --sietch-raised: 40 44% 95%;
+    --void: 40 44% 95%;
+    --glow-color: 24 88% 44%;
+
+    --surface-raised: hsl(28 35% 15% / 0.04);
+    --surface-raised-hover: hsl(28 35% 15% / 0.075);
+    --stage: radial-gradient(120% 80% at 50% -10%, hsl(38 45% 90%) 0%, hsl(36 35% 84%) 55%, hsl(32 28% 78%) 100%);
   }
 }
 
@@ -106,90 +172,142 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Inter', system-ui, sans-serif;
+    font-family: var(--font-sans);
+    font-weight: 400;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    letter-spacing: -0.011em;
-    /* Clarity mesh — violet aura from the top */
+    letter-spacing: -0.006em;
+    /* Two suns low on the horizon */
     background-image:
-      radial-gradient(120% 80% at 50% -10%, hsl(258 40% 12%) 0%, transparent 55%),
-      radial-gradient(ellipse 70% 50% at 80% 100%, hsl(255 45% 8%) 0%, transparent 55%);
+      radial-gradient(120% 80% at 50% -10%, hsl(28 55% 11%) 0%, transparent 55%),
+      radial-gradient(ellipse 70% 50% at 80% 100%, hsl(20 50% 8%) 0%, transparent 55%);
     background-color: hsl(var(--background));
   }
 
-  /* Premium typography scale */
   h1, h2, h3 {
-    letter-spacing: -0.025em;
-    font-feature-settings: 'ss01', 'ss02';
+    letter-spacing: -0.02em;
     text-wrap: balance;
   }
 
-  /* Smooth scrolling */
   html {
     scroll-behavior: smooth;
   }
 
-  /* Better tap targets */
-  button, a, [role="button"] {
+  button, a, [role="button"], input, select, textarea {
     -webkit-tap-highlight-color: transparent;
+    /* Kills the 300ms double-tap-zoom delay without disabling pinch zoom. */
+    touch-action: manipulation;
+  }
+
+  /* Keyboard focus is always visible; pointer focus never is.
+     Scoped under `html` so it outranks Tailwind's `.outline-none` utility,
+     which sits in a later layer at the same specificity and would otherwise
+     leave every field in the app with no visible focus ring at all. */
+  html :focus-visible {
+    outline: 2px solid hsl(var(--primary));
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  /* Native controls (scrollbars, date/time pickers, select popups) follow the theme. */
+  html {
+    color-scheme: dark;
+  }
+  html.light {
+    color-scheme: light;
+  }
+
+  /* Windows dark mode renders unstyled selects as black-on-black. */
+  select option {
+    background-color: hsl(var(--popover));
+    color: hsl(var(--popover-foreground));
+  }
+
+  /* Modals and drawers should not scroll the page behind them. */
+  [role="dialog"] {
+    overscroll-behavior: contain;
   }
 }
 
 @layer utilities {
-  /* Premium serif for quotes — Playfair Display */
-  .font-serif-quote {
-    font-family: 'Playfair Display', Georgia, 'Times New Roman', serif;
-    font-feature-settings: 'liga', 'kern';
+  /* ── Type roles ───────────────────────────────────────── */
+
+  /* Display: monumental, tracked-out, uppercase. The Imperial register. */
+  .font-display {
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: 0.02em;
   }
 
-  /* Monospace for numbers/timers */
-  .font-mono-num {
+  /* Epigraph: the literary voice. Quotes and nothing else. */
+  .font-epigraph {
+    font-family: var(--font-epigraph);
+    font-style: italic;
+    font-weight: 400;
+    letter-spacing: 0;
+  }
+
+  /* Eyebrow: the small stencilled label above a block of content. */
+  .eyebrow {
+    font-family: var(--font-display);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    font-size: 11px;
+    line-height: 1;
+    color: hsl(var(--spice-400));
+  }
+  .eyebrow-muted {
+    color: hsl(var(--muted-foreground));
+  }
+
+  /* Readouts: timers, counters, anything that ticks. */
+  .tabular {
     font-variant-numeric: tabular-nums;
     font-feature-settings: 'tnum';
   }
-
-  /* Glow effects — layered for depth */
-  .gold-glow {
-    box-shadow: 
-      0 0 20px hsl(var(--glow-color) / 0.25),
-      0 0 40px hsl(var(--glow-color) / 0.1),
-      0 0 80px hsl(var(--glow-color) / 0.05);
+  .readout {
+    font-family: var(--font-display);
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum';
+    font-weight: 500;
   }
 
-  .gold-text-glow {
-    text-shadow: 
-      0 0 20px hsl(255 100% 71% / 0.35),
-      0 0 60px hsl(255 100% 71% / 0.15);
+  /* ── Surfaces ─────────────────────────────────────────── */
+  .sietch-card {
+    background: hsl(var(--sietch));
+    border: 1px solid hsl(var(--sand-line));
+    border-radius: 22px;
+  }
+  .sietch-card-warm {
+    background: var(--spice-grad-soft);
+    border: 1px solid hsl(var(--spice-400) / 0.24);
+    border-radius: 22px;
   }
 
-  .chip-glow {
-    box-shadow: 
-      0 0 12px hsl(var(--glow-color) / 0.2),
-      0 0 24px hsl(var(--glow-color) / 0.08),
-      inset 0 0 12px hsl(var(--glow-color) / 0.05);
+  /* Grows a control's tap target to 44px without changing how it looks or
+     what it takes up in the layout. For controls whose visual size is fixed
+     by the design (switches, inline links inside cards). */
+  .tap-expand {
+    position: relative;
+  }
+  .tap-expand::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: 44px;
+    transform: translateY(-50%);
+    min-width: 44px;
   }
 
-  .chip-glow-red {
-    box-shadow: 
-      0 0 12px hsl(0 72% 52% / 0.2),
-      0 0 24px hsl(0 72% 52% / 0.08),
-      inset 0 0 12px hsl(0 72% 52% / 0.05);
+  /* Every inset control, chip and field sits on this. */
+  .raise {
+    background: var(--surface-raised);
   }
-
-  .blue-glow {
-    box-shadow:
-      0 0 16px hsl(220 80% 55% / 0.2),
-      0 0 40px hsl(220 80% 55% / 0.08);
-  }
-
-  .fire-glow {
-    box-shadow:
-      0 0 16px hsl(25 90% 55% / 0.3),
-      0 0 40px hsl(25 90% 55% / 0.1);
-  }
-
-  .mobile-container {
-    @apply max-w-[430px] mx-auto min-h-[100dvh] relative overflow-hidden;
+  .raise-hover:hover {
+    background: var(--surface-raised-hover);
   }
 
   .glass {
@@ -199,144 +317,103 @@
     border: 1px solid hsl(var(--border) / 0.5);
   }
 
-  /* Premium card with subtle gradient border */
-  .premium-card {
-    @apply bg-card rounded-2xl border border-border/50;
+  .mobile-container {
+    @apply max-w-[430px] mx-auto min-h-[100dvh] relative overflow-hidden;
   }
 
-  /* Super premium pulsing glow for checked weekday dots */
-  .day-glow {
-    box-shadow: 
-      0 0 6px hsl(var(--primary) / 0.3),
-      0 0 14px hsl(var(--primary) / 0.15),
-      0 0 28px hsl(var(--primary) / 0.06);
-    animation: dayPulse 2.5s ease-in-out infinite;
+  /* ── Glow ─────────────────────────────────────────────── */
+  .spice-glow {
+    box-shadow:
+      0 0 20px hsl(var(--glow-color) / 0.25),
+      0 0 40px hsl(var(--glow-color) / 0.10),
+      0 0 80px hsl(var(--glow-color) / 0.05);
   }
-  @keyframes dayPulse {
-    0%, 100% { 
-      box-shadow: 
-        0 0 6px hsl(var(--primary) / 0.3),
-        0 0 14px hsl(var(--primary) / 0.15),
-        0 0 28px hsl(var(--primary) / 0.06);
-    }
-    50% { 
-      box-shadow: 
-        0 0 8px hsl(var(--primary) / 0.4),
-        0 0 18px hsl(var(--primary) / 0.2),
-        0 0 32px hsl(var(--primary) / 0.08);
-    }
+  .spice-text-glow {
+    text-shadow:
+      0 0 20px hsl(var(--glow-color) / 0.35),
+      0 0 60px hsl(var(--glow-color) / 0.15);
+  }
+  .chip-glow {
+    box-shadow:
+      0 0 12px hsl(var(--glow-color) / 0.2),
+      0 0 24px hsl(var(--glow-color) / 0.08),
+      inset 0 0 12px hsl(var(--glow-color) / 0.05);
   }
 
-  /* Subtle text glow for unchecked weekday dots */
-  .day-text-glow {
-    text-shadow: 0 0 8px hsl(var(--primary) / 0.3);
-    box-shadow: 0 0 6px hsl(var(--primary) / 0.1);
+  /* ── Signature: heat shimmer over the spice ring ──────── */
+  .heat-shimmer {
+    position: relative;
   }
-  .day-text-glow-soft {
-    text-shadow: 0 0 6px hsl(var(--primary) / 0.15);
-    box-shadow: 0 0 4px hsl(var(--primary) / 0.06);
+  .heat-shimmer::after {
+    content: '';
+    position: absolute;
+    inset: -8%;
+    border-radius: 50%;
+    background: radial-gradient(circle, hsl(var(--spice-400) / 0.14) 0%, transparent 62%);
+    animation: heatBreathe 5s ease-in-out infinite;
+    pointer-events: none;
+  }
+  @keyframes heatBreathe {
+    0%, 100% { transform: scale(1); opacity: 0.55; }
+    50%      { transform: scale(1.09); opacity: 0.95; }
   }
 
-  /* Subtle noise texture overlay */
+  /* Sand grain — a fine warm noise, not the usual grey static */
   .noise-bg::before {
     content: '';
     position: absolute;
     inset: 0;
-    opacity: 0.015;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='f'%3E%3CfeTurbulence baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)' opacity='1'/%3E%3C/svg%3E");
+    opacity: 0.03;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='f'%3E%3CfeTurbulence baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)'/%3E%3C/svg%3E");
     pointer-events: none;
     mix-blend-mode: overlay;
     border-radius: inherit;
   }
 
-  /* Gradient text with traveling shimmer */
-  .gradient-text-gold {
+  .gradient-text-spice {
     background: linear-gradient(
       90deg,
-      hsl(255 100% 71%) 0%,
-      hsl(260 100% 82%) 25%,
-      hsl(255 100% 90%) 50%,
-      hsl(260 100% 82%) 75%,
-      hsl(255 100% 71%) 100%
+      hsl(31 87% 55%) 0%,
+      hsl(40 92% 72%) 25%,
+      hsl(44 96% 86%) 50%,
+      hsl(40 92% 72%) 75%,
+      hsl(31 87% 55%) 100%
     );
     background-size: 200% 100%;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-    animation: goldShimmer 3s ease-in-out infinite;
+    animation: spiceShimmer 3.5s ease-in-out infinite;
   }
-  @keyframes goldShimmer {
-    0% { background-position: 200% 0; }
+  @keyframes spiceShimmer {
+    0%   { background-position: 200% 0; }
     100% { background-position: -200% 0; }
   }
 
-  /* Streak number pulsing glow */
+  .day-glow {
+    box-shadow:
+      0 0 6px hsl(var(--primary) / 0.35),
+      0 0 14px hsl(var(--primary) / 0.16),
+      0 0 28px hsl(var(--primary) / 0.06);
+  }
+
   .streak-number-glow {
-    filter: drop-shadow(0 0 12px hsl(255 100% 71% / 0.3));
+    filter: drop-shadow(0 0 12px hsl(var(--primary) / 0.35));
     animation: streakGlow 2.5s ease-in-out infinite;
   }
   @keyframes streakGlow {
-    0%, 100% { filter: drop-shadow(0 0 12px hsl(255 100% 71% / 0.3)); }
-    50% { filter: drop-shadow(0 0 24px hsl(255 100% 71% / 0.5)); }
+    0%, 100% { filter: drop-shadow(0 0 12px hsl(var(--primary) / 0.3)); }
+    50%      { filter: drop-shadow(0 0 24px hsl(var(--primary) / 0.5)); }
   }
 
-  /* Breathing radial bg behind streak */
-  .streak-bg-pulse {
-    animation: bgPulse 3s ease-in-out infinite;
-  }
-  @keyframes bgPulse {
-    0%, 100% { transform: scale(1); opacity: 0.4; }
-    50% { transform: scale(1.15); opacity: 0.7; }
-  }
-
-  /* Expanding fire rings */
-  .fire-ring-outer {
-    animation: fireRingOut 2s ease-out infinite;
-  }
-  .fire-ring-inner {
-    animation: fireRingOut 2s ease-out 0.5s infinite;
-  }
-  @keyframes fireRingOut {
-    0% { transform: scale(1); opacity: 0.4; }
-    70% { transform: scale(1.5); opacity: 0; }
-    100% { transform: scale(1.5); opacity: 0; }
-  }
-
-  /* Today dot gentle pulse */
   .today-pulse {
     animation: todayPulse 2s ease-in-out infinite;
   }
   @keyframes todayPulse {
     0%, 100% { box-shadow: 0 0 0 0 hsl(var(--primary) / 0.15); }
-    50% { box-shadow: 0 0 12px 4px hsl(var(--primary) / 0.2); }
+    50%      { box-shadow: 0 0 12px 4px hsl(var(--primary) / 0.2); }
   }
 
-  /* Custom time input styling */
-  .custom-time-input {
-    appearance: none;
-    -webkit-appearance: none;
-  }
-
-  .custom-time-input::-webkit-calendar-picker-indicator {
-    display: none;
-  }
-
-  .custom-time-input::-webkit-datetime-edit {
-    font-family: 'Inter', system-ui;
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .custom-time-input::-webkit-datetime-edit-ampm-field {
-    display: none;
-  }
-
-  /* Smooth focus rings */
-  .focus-ring {
-    @apply focus:outline-none focus:ring-2 focus:ring-primary/30 focus:ring-offset-2 focus:ring-offset-background;
-  }
-
-  /* Hide horizontal scrollbar for theme drops row */
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
@@ -344,59 +421,28 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
-}
 
-/* Pulse gold animation */
-@keyframes pulse-gold {
-  0%, 100% {
-    box-shadow: 0 0 0 0 hsl(var(--glow-color) / 0.3);
-  }
-  50% {
-    box-shadow: 0 0 20px 8px hsl(var(--glow-color) / 0.15);
-  }
-}
-
-.animate-pulse-gold {
-  animation: pulse-gold 2.5s ease-in-out infinite;
-}
-
-/* Streak fire pulse */
-@keyframes fire-pulse {
-  0%, 100% {
-    transform: scale(1);
-    filter: drop-shadow(0 0 8px hsl(var(--glow-color) / 0.3));
-  }
-  50% {
-    transform: scale(1.05);
-    filter: drop-shadow(0 0 16px hsl(var(--glow-color) / 0.5));
+  /* Screen-reader-only, for labels the eye does not need */
+  .sr-only {
+    position: absolute;
+    width: 1px; height: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
   }
 }
 
-.animate-fire-pulse {
-  animation: fire-pulse 2s ease-in-out infinite;
-}
-
-/* Smooth counter animation */
-@keyframes countUp {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-/* Selection color */
-::selection {
-  background: hsl(255 100% 71% / 0.3);
-  color: hsl(210 40% 98%);
-}
-
-/* ─── Frosted glass nav bar (iOS-style) ─── */
+/* ─── Frosted nav ─── */
 .frosted-nav {
-  background: hsl(var(--card) / 0.65);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border-top: 1px solid hsl(var(--border) / 0.4);
+  background: hsl(var(--card) / 0.72);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  border-top: 1px solid hsl(var(--border) / 0.5);
 }
 
-/* ─── CTA Button traveling shimmer ─── */
+/* ─── CTA shimmer ─── */
 .btn-shimmer {
   position: relative;
   overflow: hidden;
@@ -408,174 +454,109 @@
   background: linear-gradient(
     105deg,
     transparent 30%,
-    hsl(0 0% 100% / 0.12) 45%,
-    hsl(0 0% 100% / 0.2) 50%,
-    hsl(0 0% 100% / 0.12) 55%,
+    hsl(45 100% 92% / 0.14) 45%,
+    hsl(45 100% 96% / 0.24) 50%,
+    hsl(45 100% 92% / 0.14) 55%,
     transparent 70%
   );
   background-size: 200% 100%;
-  animation: btnShimmer 3s ease-in-out infinite;
+  animation: btnShimmer 3.5s ease-in-out infinite;
   pointer-events: none;
   border-radius: inherit;
 }
 @keyframes btnShimmer {
-  0% { background-position: 200% 0; }
+  0%   { background-position: 200% 0; }
   100% { background-position: -200% 0; }
 }
 
-/* ─── Mood tap glow feedback ─── */
-.mood-glow {
-  transition: background-color 0.2s ease, box-shadow 0.2s ease;
-}
-.mood-glow:active {
-  background-color: hsl(var(--primary) / 0.08);
-  box-shadow: 0 0 20px hsl(var(--primary) / 0.15);
-}
-
-/* ─── Card lift on hover/active ─── */
 .card-lift {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 .card-lift:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  border-color: hsl(var(--primary) / 0.32);
+  box-shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.75);
 }
 .card-lift:active {
-  transform: translateY(0px) scale(0.98);
+  transform: translateY(0) scale(0.985);
 }
 
-/* ─── Accessibility: prefers-reduced-motion ─── */
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
-  .btn-shimmer::after {
-    animation: none;
-  }
-  .gold-glow, .chip-glow, .day-glow, .fire-glow {
-    box-shadow: none;
-  }
+::selection {
+  background: hsl(31 87% 55% / 0.32);
+  color: hsl(37 51% 95%);
 }
 
-/* Scrollbar — hide all for mobile app */
 html, body {
   overflow-x: hidden;
 }
 
 * {
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE/Edge */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
-
 *::-webkit-scrollbar {
-  display: none; /* Chrome/Safari */
+  display: none;
 }
 
-/* ─── Loading Dots Animation (Dribbble-inspired) ─── */
-.orbital-loader {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  height: 48px;
-}
-
-.orbital-loader .dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: hsl(var(--primary));
-  will-change: transform, opacity;
-  animation: dot-wave 1.4s ease-in-out infinite;
-}
-
-.orbital-loader .dot:nth-child(2) {
-  animation-delay: 0.16s;
-}
-
-.orbital-loader .dot:nth-child(3) {
-  animation-delay: 0.32s;
-}
-
-@keyframes dot-wave {
-  0%, 80%, 100% {
-    transform: translateY(0) scale(1);
-    opacity: 0.4;
-  }
-  40% {
-    transform: translateY(-14px) scale(1.15);
-    opacity: 1;
-  }
-}
-
-/* Smaller variant for inline use */
+/* ─── Loading dots ─── */
+.orbital-loader,
 .orbital-loader-sm {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
-  height: 28px;
 }
+.orbital-loader { gap: 8px; height: 48px; }
+.orbital-loader-sm { gap: 5px; height: 28px; }
 
+.orbital-loader .dot,
 .orbital-loader-sm .dot {
-  width: 6px;
-  height: 6px;
   border-radius: 50%;
   background: hsl(var(--primary));
   will-change: transform, opacity;
-  animation: dot-wave-sm 1.4s ease-in-out infinite;
 }
+.orbital-loader .dot { width: 10px; height: 10px; animation: dot-wave 1.4s ease-in-out infinite; }
+.orbital-loader-sm .dot { width: 6px; height: 6px; animation: dot-wave-sm 1.4s ease-in-out infinite; }
 
-.orbital-loader-sm .dot:nth-child(2) {
-  animation-delay: 0.16s;
+.orbital-loader .dot:nth-child(2),
+.orbital-loader-sm .dot:nth-child(2) { animation-delay: 0.16s; }
+.orbital-loader .dot:nth-child(3),
+.orbital-loader-sm .dot:nth-child(3) { animation-delay: 0.32s; }
+
+@keyframes dot-wave {
+  0%, 80%, 100% { transform: translateY(0) scale(1); opacity: 0.4; }
+  40%           { transform: translateY(-14px) scale(1.15); opacity: 1; }
 }
-
-.orbital-loader-sm .dot:nth-child(3) {
-  animation-delay: 0.32s;
-}
-
 @keyframes dot-wave-sm {
-  0%, 80%, 100% {
-    transform: translateY(0) scale(1);
-    opacity: 0.35;
-  }
-  40% {
-    transform: translateY(-8px) scale(1.1);
-    opacity: 1;
-  }
+  0%, 80%, 100% { transform: translateY(0) scale(1); opacity: 0.35; }
+  40%           { transform: translateY(-8px) scale(1.1); opacity: 1; }
 }
 
 /* ============================================================
-   CLARITY — animation set + brand utilities (ported from design)
+   CLARITY — animation set
    ============================================================ */
-@keyframes clarity-cardUp { from { opacity: 0; transform: translateY(28px); } to { opacity: 1; transform: none; } }
-@keyframes clarity-fadeIn { from { opacity: 0; } to { opacity: 1; } }
-@keyframes clarity-popIn { from { opacity: 0; transform: scale(.86); } to { opacity: 1; transform: scale(1); } }
+@keyframes clarity-cardUp  { from { opacity: 0; transform: translateY(28px); } to { opacity: 1; transform: none; } }
+@keyframes clarity-fadeIn  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes clarity-popIn   { from { opacity: 0; transform: scale(.86); } to { opacity: 1; transform: scale(1); } }
 @keyframes clarity-slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-@keyframes clarity-glow { 0%,100% { box-shadow: 0 14px 40px -8px rgba(139,107,255,.5); } 50% { box-shadow: 0 14px 52px -6px rgba(139,107,255,.75); } }
-@keyframes clarity-floaty { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
-@keyframes clarity-grow { from { width: 0; } to { width: 100%; } }
+@keyframes clarity-glow    { 0%,100% { box-shadow: 0 14px 40px -10px rgba(240,144,43,.45); } 50% { box-shadow: 0 14px 52px -8px rgba(240,144,43,.7); } }
+@keyframes clarity-floaty  { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+@keyframes clarity-grow    { from { width: 0; } to { width: 100%; } }
 @keyframes clarity-growBar { from { transform: scaleX(0); } to { transform: scaleX(1); } }
-@keyframes clarity-dotIn { from { opacity: 0; transform: scale(0); } to { opacity: 1; transform: scale(1); } }
-@keyframes clarity-spin { to { transform: rotate(360deg); } }
+@keyframes clarity-dotIn   { from { opacity: 0; transform: scale(0); } to { opacity: 1; transform: scale(1); } }
+@keyframes clarity-spin    { to { transform: rotate(360deg); } }
 
 .clarity-root {
-  color: #fff;
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Inter', system-ui, sans-serif;
+  color: hsl(var(--foreground));
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
 .clarity-root ::-webkit-scrollbar { width: 0; height: 0; }
-.clarity-root a { color: #a98cff; text-decoration: none; }
-.clarity-root a:hover { color: #c4b2ff; }
+.clarity-root a { color: hsl(var(--spice-300)); text-decoration: none; }
+.clarity-root a:hover { color: hsl(var(--spice-200)); }
 
-/* hide scrollbars on scroll containers */
 .clarity-scroll { scrollbar-width: none; -ms-overflow-style: none; }
 .clarity-scroll::-webkit-scrollbar { width: 0; height: 0; display: none; }
 
-/* named animation helpers */
 .anim-cardUp   { animation: clarity-cardUp .6s cubic-bezier(.2,.7,.2,1) both; }
 .anim-fadeIn   { animation: clarity-fadeIn .4s ease both; }
 .anim-popIn    { animation: clarity-popIn .6s cubic-bezier(.2,.8,.2,1) both; }
@@ -584,14 +565,23 @@ html, body {
 .anim-spin     { animation: clarity-spin .8s linear infinite; }
 .anim-glowLoop { animation: clarity-glow 3.5s ease-in-out infinite; }
 
-.clarity-grad        { background: var(--clarity-grad); }
-.clarity-grad-bright { background: var(--clarity-grad-bright); }
-.clarity-tab-num     { font-variant-numeric: tabular-nums; }
+.spice-grad        { background: var(--spice-grad); }
+.spice-grad-bright { background: var(--spice-grad-bright); }
+.clarity-tab-num   { font-variant-numeric: tabular-nums; }
 
+/* ─── Accessibility: honour reduced motion everywhere ─── */
 @media (prefers-reduced-motion: reduce) {
-  .clarity-root *, .clarity-root *::before, .clarity-root *::after {
-    animation-duration: .001ms !important;
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: .001ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .btn-shimmer::after,
+  .heat-shimmer::after {
+    animation: none;
+  }
+  .spice-glow, .chip-glow, .day-glow {
+    box-shadow: none;
   }
 }
