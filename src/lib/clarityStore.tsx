@@ -12,11 +12,15 @@ import {
   type ReactNode,
 } from "react";
 import {
+  APP_CATALOG,
+  PUBLIC_IDEAS,
   SEED_APPS,
   SEED_PROJECTS,
   SEED_TODOS,
   type AppIcon,
   type Project,
+  type ProjectGrade,
+  type ProjectStatus,
   type Todo,
 } from "./clarityData";
 import {
@@ -32,7 +36,9 @@ import {
   type DayMap,
   type Session,
 } from "./clarityStats";
+import { gradeProject } from "./grader";
 import { cheer, note, haptic } from "./feedback";
+import { simulateWrite } from "./optimistic";
 
 export type ClarityView =
   | "splash"
@@ -50,10 +56,12 @@ export type ClarityView =
   | "paywall"
   | "articles"
   | "insights"
-  | "milestones";
+  | "milestones"
+  | "grade";
 
 export type SubmitStage = "camera" | "analyzing" | "result";
 export type ArticleStage = "read" | "record" | "analyzing" | "done";
+export type GradeStage = "intro" | "camera" | "grading" | "result";
 export type SoundscapeId = "none" | "wind" | "drone" | "rain";
 export type ThemeMode = "dark" | "light";
 
@@ -66,6 +74,13 @@ export interface LockSchedule {
   /** 0 = Sunday */
   days: number[];
 }
+
+/** Bounds for the two duration sliders, shared by Settings and the store clamp. */
+export const SESSION_BOUNDS = { min: 5, max: 420, step: 5 } as const;
+export const GOAL_BOUNDS = { min: 10, max: 720, step: 10 } as const;
+
+/** One freeze per rolling 7 days. Enough to survive a bad week, not to coast. */
+export const FREEZE_WINDOW_DAYS = 7;
 
 export interface ClarityState {
   view: ClarityView;
@@ -101,6 +116,21 @@ export interface ClarityState {
   todoDraft: string;
   name: string;
 
+  // ── projects workspace ──
+  /** The project whose detail sheet is open. */
+  openProjectId: string | null;
+  /** Community ideas already cheered / taken on. */
+  cheered: string[];
+  adopted: string[];
+  /** False until the ideas feed has "arrived" — drives its skeleton. */
+  ideasLoaded: boolean;
+
+  // ── project grader ──
+  gradeStage: GradeStage;
+  gradeProjectId: string | null;
+  gradePhoto: string | null;
+  gradeResult: ProjectGrade | null;
+
   // ── preferences ──
   /** minutes a new session runs for */
   sessionMinutes: number;
@@ -119,6 +149,8 @@ export interface ClarityState {
   sessions: Session[];
   /** the day the Home screen is currently showing */
   viewDate: string;
+  /** day-keys the user spent a streak freeze on */
+  freezeDays: string[];
 
   // ── daily read ──
   articleStage: ArticleStage;
@@ -129,13 +161,15 @@ export interface ClarityState {
   paletteOpen: boolean;
 }
 
-const STORAGE_KEY = "clarity.state.v2";
+const STORAGE_KEY = "clarity.state.v3";
+const LEGACY_KEY = "clarity.state.v2";
 
 type Persisted = Pick<
   ClarityState,
   | "locking" | "task" | "apps" | "projects" | "selProj" | "todos" | "name"
   | "sessionMinutes" | "goalMinutes" | "soundscape" | "theme" | "schedule" | "strictDefault"
   | "introSeen" | "isPro" | "articlesDone" | "days" | "sessions"
+  | "cheered" | "adopted" | "freezeDays"
 >;
 
 const DEFAULT_SCHEDULE: LockSchedule = {
@@ -145,11 +179,55 @@ const DEFAULT_SCHEDULE: LockSchedule = {
   days: [1, 2, 3, 4, 5],
 };
 
+/**
+ * Saved apps carry only an id and a lock flag forward. Everything visual — the
+ * mark, the tile, how it is padded — is re-read from the catalogue, so a brand
+ * refresh ships without rewriting anyone's stored state.
+ */
+function normalizeApps(saved: unknown): AppIcon[] {
+  if (!Array.isArray(saved)) return SEED_APPS;
+  const apps = saved
+    .map((a) => {
+      const id = (a as { id?: string })?.id;
+      const entry = APP_CATALOG.find((c) => c.id === id);
+      if (!entry) return null;
+      return { ...entry, locked: (a as { locked?: boolean })?.locked ?? true };
+    })
+    .filter((a): a is AppIcon => a !== null);
+  return apps.length ? apps : SEED_APPS;
+}
+
+/** Fills in fields added after a user's state was written. */
+function normalizeProjects(saved: unknown): Project[] {
+  if (!Array.isArray(saved)) return SEED_PROJECTS;
+  const projects = saved.map((p) => {
+    const raw = p as Partial<Project> & { id?: string; title?: string };
+    return {
+      id: raw.id ?? `p${Math.random().toString(36).slice(2, 8)}`,
+      title: raw.title ?? "Untitled",
+      desc: raw.desc ?? "",
+      status: raw.status ?? "idea",
+      progress: typeof raw.progress === "number" ? raw.progress : 0,
+      notes: raw.notes ?? "",
+      grades: Array.isArray(raw.grades) ? raw.grades : [],
+      adoptedFrom: raw.adoptedFrom,
+    } satisfies Project;
+  });
+  return projects.length ? projects : SEED_PROJECTS;
+}
+
 function loadPersisted(): Partial<Persisted> {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return {};
-    return JSON.parse(raw) as Partial<Persisted>;
+    if (raw) return JSON.parse(raw) as Partial<Persisted>;
+    // First run after the shape change — carry the history over, since that is
+    // the only part a user cannot recreate by clicking around.
+    const legacy = localStorage.getItem(LEGACY_KEY);
+    if (legacy) {
+      const old = JSON.parse(legacy) as Partial<Persisted>;
+      return { ...old, apps: undefined, projects: undefined } as Partial<Persisted>;
+    }
+    return {};
   } catch {
     return {};
   }
@@ -193,12 +271,22 @@ function makeInitial(): ClarityState {
     sessionStartedAt: null,
     sessionNote: "",
 
-    apps: saved.apps ?? SEED_APPS,
-    projects: saved.projects ?? SEED_PROJECTS,
+    apps: normalizeApps(saved.apps),
+    projects: normalizeProjects(saved.projects),
     selProj: saved.selProj ?? [],
     todos,
     todoDraft: "",
     name: saved.name ?? "",
+
+    openProjectId: null,
+    cheered: saved.cheered ?? [],
+    adopted: saved.adopted ?? [],
+    ideasLoaded: false,
+
+    gradeStage: "intro",
+    gradeProjectId: null,
+    gradePhoto: null,
+    gradeResult: null,
 
     sessionMinutes: saved.sessionMinutes ?? 25,
     goalMinutes: saved.goalMinutes ?? 180,
@@ -213,6 +301,7 @@ function makeInitial(): ClarityState {
     days: { ...days, [today]: todayLog },
     sessions: saved.sessions ?? [],
     viewDate: today,
+    freezeDays: saved.freezeDays ?? [],
 
     articleStage: "read",
     currentArticleId: null,
@@ -244,6 +333,13 @@ export function scheduleActive(schedule: LockSchedule, now = new Date()): boolea
   return end >= start ? mins >= start && mins < end : mins >= start || mins < end;
 }
 
+/** A freeze is available once the last one is `FREEZE_WINDOW_DAYS` old. */
+export function freezeAvailableFrom(freezeDays: string[]): boolean {
+  if (!freezeDays.length) return true;
+  const cutoff = addDays(dateKey(), -FREEZE_WINDOW_DAYS);
+  return !freezeDays.some((d) => d > cutoff);
+}
+
 export interface ClarityActions {
   go: (v: ClarityView) => void;
   toggleLock: () => void;
@@ -263,6 +359,9 @@ export interface ClarityActions {
   /** the user went through the gate and opened the app anyway */
   blockDismissAnyway: () => void;
   toggleAppLock: (id: string) => void;
+  /** add / drop apps from the catalogue */
+  addApp: (id: string) => void;
+  removeApp: (id: string) => void;
 
   startFocus: (opts?: { minutes?: number; earnBack?: boolean; strict?: boolean }) => void;
   toggleRun: () => void;
@@ -277,11 +376,32 @@ export interface ClarityActions {
   goPaywall: () => void;
   subscribe: () => void;
   dismissPaywall: () => void;
+
+  // ── daily read ──
   openArticles: () => void;
   openArticle: (id: string) => void;
-  startArticleRecord: () => void;
+  startArticleRecord: (id?: string) => void;
   submitArticleVideo: () => void;
   finishArticle: () => void;
+
+  // ── projects workspace ──
+  openProject: (id: string | null) => void;
+  createProject: (title: string, desc?: string) => void;
+  setProjectStatus: (id: string, status: ProjectStatus) => void;
+  setProjectProgress: (id: string, progress: number) => void;
+  setProjectNotes: (id: string, notes: string) => void;
+  deleteProject: (id: string) => void;
+  cheerIdea: (id: string) => void;
+  adoptIdea: (id: string) => void;
+  loadIdeas: () => void;
+
+  // ── grader ──
+  openGrader: (projectId: string) => void;
+  setGradePhoto: (dataUrl: string) => void;
+  runGrade: () => void;
+  resetGrade: () => void;
+  closeGrade: () => void;
+
   toggleTodo: (id: string) => void;
   addTodo: () => void;
   removeTodo: (id: string) => void;
@@ -298,6 +418,7 @@ export interface ClarityActions {
   setTheme: (t: ThemeMode) => void;
   setSchedule: (patch: Partial<LockSchedule>) => void;
   setStrictDefault: (v: boolean) => void;
+  spendFreeze: () => void;
   resetAllData: () => void;
   exportData: () => void;
 
@@ -313,6 +434,11 @@ export interface ClarityDerived {
   streak: number;
   score: ClarityScore;
   scheduleOn: boolean;
+  /** the project whose sheet is open, if any */
+  openProject: Project | null;
+  freezeAvailable: boolean;
+  /** screens that own the whole frame hide the tab bar */
+  tabBarHidden: boolean;
 }
 
 interface ClarityContextValue {
@@ -322,6 +448,11 @@ interface ClarityContextValue {
 }
 
 const ClarityContext = createContext<ClarityContextValue | null>(null);
+
+/** Views that take the whole frame — no tab bar over them. */
+const FULLSCREEN_VIEWS: ClarityView[] = [
+  "splash", "intro", "focus", "blocked", "task", "spring", "paywall", "grade",
+];
 
 export function ClarityProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<ClarityState>(makeInitial);
@@ -354,6 +485,9 @@ export function ClarityProvider({ children }: { children: ReactNode }) {
       articlesDone: state.articlesDone,
       days: state.days,
       sessions: state.sessions,
+      cheered: state.cheered,
+      adopted: state.adopted,
+      freezeDays: state.freezeDays,
     };
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(persisted));
@@ -365,6 +499,7 @@ export function ClarityProvider({ children }: { children: ReactNode }) {
     state.todos, state.name, state.sessionMinutes, state.goalMinutes,
     state.soundscape, state.theme, state.schedule, state.strictDefault,
     state.introSeen, state.isPro, state.articlesDone, state.days, state.sessions,
+    state.cheered, state.adopted, state.freezeDays,
   ]);
 
   // ── theme ──
@@ -557,6 +692,24 @@ export function ClarityProvider({ children }: { children: ReactNode }) {
           apps: s.apps.map((a) => (a.id === id ? { ...a, locked: !a.locked } : a)),
         })),
 
+      addApp: (id) =>
+        update((s) => {
+          if (s.apps.some((a) => a.id === id)) return {};
+          const entry = APP_CATALOG.find((c) => c.id === id);
+          if (!entry) return {};
+          haptic(10);
+          note(`${entry.name} added`, "It's locked by default — switch it off any time.");
+          return { apps: [...s.apps, { ...entry, locked: true }] };
+        }),
+
+      removeApp: (id) =>
+        update((s) => {
+          const app = s.apps.find((a) => a.id === id);
+          if (!app) return {};
+          note(`${app.name} removed`, "Clarity will stop watching it.");
+          return { apps: s.apps.filter((a) => a.id !== id) };
+        }),
+
       startFocus: (opts) =>
         setState((s) => {
           const mins = opts?.minutes ?? s.sessionMinutes;
@@ -616,32 +769,147 @@ export function ClarityProvider({ children }: { children: ReactNode }) {
       },
       dismissPaywall: () => patch({ view: "home" }),
 
+      // ── daily read ──
+      // The Read tab always lands on something readable: `currentArticleId` is
+      // resolved by the screen, so opening the tab never shows an empty state.
       openArticles: () => patch({ view: "articles", articleStage: "read" }),
       openArticle: (id) => patch({ view: "articles", currentArticleId: id, articleStage: "read" }),
-      startArticleRecord: () => patch({ articleStage: "record" }),
+      /** From Home's card straight into recording — the hand-off into the tab. */
+      startArticleRecord: (id) =>
+        update((s) => ({
+          view: "articles",
+          currentArticleId: id ?? s.currentArticleId,
+          articleStage: "record",
+        })),
       submitArticleVideo: () => patch({ articleStage: "analyzing" }),
-      finishArticle: () => patch({ view: "home", articleStage: "read" }),
+      finishArticle: () => patch({ articleStage: "read" }),
+
+      // ── projects workspace ──
+      openProject: (id) => patch({ openProjectId: id }),
+
+      createProject: (title, desc = "") =>
+        setState((s) => {
+          const clean = title.trim();
+          if (!clean) return s;
+          const project: Project = {
+            id: `p${Date.now()}`,
+            title: clean,
+            desc: desc.trim(),
+            status: "idea",
+            progress: 0,
+            notes: "",
+            grades: [],
+          };
+          cheer("Project added", "Pick it for the week when you're ready.");
+          return { ...s, projects: [project, ...s.projects] };
+        }),
+
+      setProjectStatus: (id, status) =>
+        update((s) => ({
+          projects: s.projects.map((p) =>
+            p.id === id ? { ...p, status, progress: status === "done" ? 100 : p.progress } : p,
+          ),
+        })),
+
+      setProjectProgress: (id, progress) =>
+        update((s) => ({
+          projects: s.projects.map((p) =>
+            p.id === id
+              ? {
+                  ...p,
+                  progress: Math.max(0, Math.min(100, Math.round(progress))),
+                  // Moving the bar off zero is the clearest signal it is live.
+                  status: progress >= 100 ? "done" : progress > 0 ? "active" : p.status,
+                }
+              : p,
+          ),
+        })),
+
+      setProjectNotes: (id, notes) =>
+        update((s) => ({
+          projects: s.projects.map((p) => (p.id === id ? { ...p, notes } : p)),
+        })),
+
+      deleteProject: (id) =>
+        update((s) => ({
+          projects: s.projects.filter((p) => p.id !== id),
+          selProj: s.selProj.filter((x) => x !== id),
+          openProjectId: s.openProjectId === id ? null : s.openProjectId,
+        })),
+
+      cheerIdea: (id) =>
+        update((s) => {
+          haptic(8);
+          return {
+            cheered: s.cheered.includes(id)
+              ? s.cheered.filter((x) => x !== id)
+              : [...s.cheered, id],
+          };
+        }),
+
+      adoptIdea: (id) =>
+        setState((s) => {
+          if (s.adopted.includes(id)) return s;
+          const idea = PUBLIC_IDEAS.find((i) => i.id === id);
+          if (!idea) return s;
+          const project: Project = {
+            id: `p${Date.now()}`,
+            title: idea.idea,
+            desc: idea.desc,
+            status: "idea",
+            progress: 0,
+            notes: "",
+            grades: [],
+            adoptedFrom: idea.author,
+          };
+          cheer(`Added "${idea.idea}"`, `From ${idea.author}. It's in your projects now.`);
+          return { ...s, adopted: [...s.adopted, id], projects: [project, ...s.projects] };
+        }),
+
+      loadIdeas: () => patch({ ideasLoaded: true }),
+
+      // ── grader ──
+      openGrader: (projectId) =>
+        patch({
+          view: "grade",
+          gradeProjectId: projectId,
+          gradeStage: "intro",
+          gradePhoto: null,
+          gradeResult: null,
+        }),
+      setGradePhoto: (dataUrl) => patch({ gradePhoto: dataUrl, gradeStage: "camera" }),
+      runGrade: () => patch({ gradeStage: "grading" }),
+      resetGrade: () => patch({ gradeStage: "camera", gradePhoto: null, gradeResult: null }),
+      closeGrade: () =>
+        patch({ view: "projects", gradeStage: "intro", gradePhoto: null, gradeResult: null }),
 
       toggleProject: (id) =>
         update((s) => {
           if (s.selProj.includes(id)) return { selProj: s.selProj.filter((x) => x !== id) };
-          if (s.selProj.length >= 3) return {};
+          if (s.selProj.length >= 3) {
+            note("Three is the limit", "That's the point — drop one to add another.");
+            return {};
+          }
           return { selProj: [...s.selProj, id] };
         }),
 
       confirmProjects: () =>
         setState((s) => {
           if (s.selProj.length !== 3) return s;
-          const titles = s.projects.filter((p) => s.selProj.includes(p.id)).map((p) => p.title);
+          const picked = s.projects.filter((p) => s.selProj.includes(p.id));
           const have = new Set(s.todos.map((t) => t.text));
-          const add = titles
-            .filter((t) => !have.has(t))
-            .map((t, i) => ({ id: `pt${Date.now()}${i}`, text: t, done: false }));
+          const add = picked
+            .filter((p) => !have.has(p.title))
+            .map((p, i) => ({ id: `pt${Date.now()}${i}`, text: p.title, done: false, projectId: p.id }));
           const todos = [...s.todos, ...add];
           cheer("Week locked in", "Your 3 projects are set. Protect them.");
           return {
             ...s,
             todos,
+            // Picking a project for the week is what makes it active.
+            projects: s.projects.map((p) =>
+              s.selProj.includes(p.id) && p.status === "idea" ? { ...p, status: "active" } : p,
+            ),
             days: withDay(s, dateKey(), {
               todosDone: todos.filter((t) => t.done).length,
               todosTotal: todos.length,
@@ -706,22 +974,41 @@ export function ClarityProvider({ children }: { children: ReactNode }) {
       setName: (v) => patch({ name: v }),
       setSessionMinutes: (m) =>
         update((s) => {
-          const mins = Math.max(5, Math.min(180, Math.round(m)));
+          const mins = Math.max(
+            SESSION_BOUNDS.min,
+            Math.min(SESSION_BOUNDS.max, Math.round(m)),
+          );
           const idle = s.view !== "focus";
           return {
             sessionMinutes: mins,
             ...(idle ? { focusTotal: mins * 60, focusLeft: mins * 60 } : {}),
           };
         }),
-      setGoalMinutes: (m) => patch({ goalMinutes: Math.max(15, Math.min(720, Math.round(m))) }),
+      setGoalMinutes: (m) =>
+        patch({
+          goalMinutes: Math.max(GOAL_BOUNDS.min, Math.min(GOAL_BOUNDS.max, Math.round(m))),
+        }),
       setSoundscape: (s) => patch({ soundscape: s }),
       setTheme: (t) => patch({ theme: t }),
       setSchedule: (p) => update((s) => ({ schedule: { ...s.schedule, ...p } })),
       setStrictDefault: (v) => patch({ strictDefault: v }),
 
+      spendFreeze: () =>
+        update((s) => {
+          if (!freezeAvailableFrom(s.freezeDays)) {
+            note("No freeze left", `One per ${FREEZE_WINDOW_DAYS} days. Yours is still cooling down.`);
+            return {};
+          }
+          const key = dateKey();
+          if (s.freezeDays.includes(key)) return {};
+          cheer("Streak frozen", "Today won't break it. Come back tomorrow.");
+          return { freezeDays: [...s.freezeDays, key] };
+        }),
+
       resetAllData: () => {
         try {
           localStorage.removeItem(STORAGE_KEY);
+          localStorage.removeItem(LEGACY_KEY);
         } catch {
           /* nothing to clear */
         }
@@ -732,9 +1019,10 @@ export function ClarityProvider({ children }: { children: ReactNode }) {
       exportData: () =>
         setState((s) => {
           try {
-            const blob = new Blob([JSON.stringify({ days: s.days, sessions: s.sessions }, null, 2)], {
-              type: "application/json",
-            });
+            const blob = new Blob(
+              [JSON.stringify({ days: s.days, sessions: s.sessions, projects: s.projects }, null, 2)],
+              { type: "application/json" },
+            );
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
@@ -762,17 +1050,77 @@ export function ClarityProvider({ children }: { children: ReactNode }) {
     [patch, update, commitSession],
   );
 
+  // ── grading: photo → score ──
+  // Lives here rather than in the screen so navigating away mid-grade does not
+  // cancel it; the result is waiting when you come back.
+  useEffect(() => {
+    if (state.gradeStage !== "grading" || !state.gradePhoto) return;
+    let alive = true;
+    const project = state.projects.find((p) => p.id === state.gradeProjectId);
+
+    gradeProject({
+      image: state.gradePhoto,
+      projectTitle: project?.title ?? "Untitled project",
+      projectDesc: project?.desc ?? "",
+      progress: project?.progress ?? 0,
+    })
+      .then((grade) => {
+        if (!alive) return;
+        setState((s) => ({
+          ...s,
+          gradeStage: "result",
+          gradeResult: grade,
+          projects: s.projects.map((p) =>
+            p.id === s.gradeProjectId ? { ...p, grades: [grade, ...p.grades].slice(0, 12) } : p,
+          ),
+        }));
+        cheer(`Graded ${grade.score}/100`, grade.headline);
+      })
+      .catch(() => {
+        if (!alive) return;
+        setState((s) => ({ ...s, gradeStage: "camera" }));
+        note("Grading failed", "Have another go — the photo didn't get through.");
+      });
+
+    return () => {
+      alive = false;
+    };
+  }, [state.gradeStage, state.gradePhoto, state.gradeProjectId, state.projects]);
+
+  // ── ideas feed: a real fetch in everything but name ──
+  useEffect(() => {
+    if (state.view !== "projects" || state.ideasLoaded) return;
+    let alive = true;
+    simulateWrite(650).then(() => {
+      if (alive) setState((s) => ({ ...s, ideasLoaded: true }));
+    });
+    return () => {
+      alive = false;
+    };
+  }, [state.view, state.ideasLoaded]);
+
   const derived = useMemo<ClarityDerived>(() => {
     const today = getDay(state.days, dateKey());
     const viewedDay = getDay(state.days, state.viewDate);
+    const frozen = new Set(state.freezeDays);
+    // Recording is a full-attention moment — the tab bar would only offer a
+    // way to lose the take.
+    const readingBusy =
+      state.view === "articles" && state.articleStage !== "read";
     return {
       today,
       viewedDay,
-      streak: computeStreak(state.days),
+      streak: computeStreak(state.days, 10, frozen),
       score: clarityScore(viewedDay, state.goalMinutes),
       scheduleOn: scheduleActive(state.schedule),
+      openProject: state.projects.find((p) => p.id === state.openProjectId) ?? null,
+      freezeAvailable: freezeAvailableFrom(state.freezeDays),
+      tabBarHidden: FULLSCREEN_VIEWS.includes(state.view) || readingBusy,
     };
-  }, [state.days, state.viewDate, state.goalMinutes, state.schedule]);
+  }, [
+    state.days, state.viewDate, state.goalMinutes, state.schedule, state.freezeDays,
+    state.projects, state.openProjectId, state.view, state.articleStage,
+  ]);
 
   const value = useMemo(() => ({ state, actions, derived }), [state, actions, derived]);
   return <ClarityContext.Provider value={value}>{children}</ClarityContext.Provider>;

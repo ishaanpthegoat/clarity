@@ -44,7 +44,7 @@ export default function Insights() {
   );
 
   return (
-    <div className="anim-slideUp clarity-scroll absolute inset-0 flex flex-col overflow-y-auto bg-background px-[22px] pb-[118px] pt-[78px]">
+    <div className="anim-slideUp clarity-scroll absolute inset-0 flex flex-col overflow-y-auto bg-background px-[22px] pb-[118px] pt-[calc(78px_+_var(--safe-t))]">
       <div className="mb-6 flex items-center gap-3.5">
         <button
           onClick={() => actions.go("home")}

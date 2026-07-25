@@ -1,6 +1,7 @@
 // Clarity — splash. WebGL sun-haze background, animated LED wordmark, auto-advance / tap.
 import { useEffect, useRef } from "react";
 import { useClarity } from "@/lib/clarityStore";
+import { publicUrl } from "@/lib/asset";
 import LEDLogo from "../LEDLogo";
 
 function useSpiceShader(ref: React.RefObject<HTMLCanvasElement>) {
@@ -97,8 +98,8 @@ export default function Splash() {
       <canvas ref={canvasRef} className="absolute inset-0 block h-full w-full" aria-hidden="true" />
       <video
         className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-40 mix-blend-color-dodge"
-        src="/clarity/aurora.mp4"
-        poster="/clarity/aurora.png"
+        src={publicUrl("/clarity/aurora.mp4")}
+        poster={publicUrl("/clarity/aurora.png")}
         autoPlay
         muted
         loop

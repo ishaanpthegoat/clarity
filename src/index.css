@@ -8,35 +8,35 @@
 
 @font-face {
   font-family: 'Barlow';
-  src: url('/fonts/Barlow-Regular.ttf') format('truetype');
+  src: url('../fonts/Barlow-Regular.ttf') format('truetype');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: 'Barlow';
-  src: url('/fonts/Barlow-Medium.ttf') format('truetype');
+  src: url('../fonts/Barlow-Medium.ttf') format('truetype');
   font-weight: 500;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: 'Barlow';
-  src: url('/fonts/Barlow-SemiBold.ttf') format('truetype');
+  src: url('../fonts/Barlow-SemiBold.ttf') format('truetype');
   font-weight: 600;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: 'Barlow';
-  src: url('/fonts/Barlow-Bold.ttf') format('truetype');
+  src: url('../fonts/Barlow-Bold.ttf') format('truetype');
   font-weight: 700;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: 'Barlow';
-  src: url('/fonts/Barlow-ExtraBold.ttf') format('truetype');
+  src: url('../fonts/Barlow-ExtraBold.ttf') format('truetype');
   font-weight: 800;
   font-style: normal;
   font-display: swap;
@@ -111,6 +111,13 @@
     --surface-raised-hover: hsl(40 40% 92% / 0.08);
     /* The desk the phone sits on */
     --stage: radial-gradient(120% 80% at 50% -10%, hsl(26 45% 9%) 0%, hsl(30 33% 2%) 55%, hsl(20 30% 1%) 100%);
+
+    /* Real device safe areas. Only meaningful in standalone/home-screen mode
+       (see apple-mobile-web-app-capable in index.html) — in a normal browser
+       tab these resolve to 0 and every offset below collapses to its plain
+       pixel value. One source of truth so no screen guesses at a notch. */
+    --safe-t: env(safe-area-inset-top, 0px);
+    --safe-b: env(safe-area-inset-bottom, 0px);
 
     --spice-grad: linear-gradient(135deg, #f5c542, #e2620f);
     --spice-grad-soft: linear-gradient(135deg, rgba(245,197,66,.16), rgba(226,98,15,.05));
@@ -496,6 +503,34 @@ html, body {
 }
 *::-webkit-scrollbar {
   display: none;
+}
+
+/* ─── Skeletons ───
+   A warm sweep in reading order. `background-position` only, so it stays on
+   the compositor, and it holds still for anyone who asked for less motion. */
+.skeleton-sweep {
+  background-color: hsl(var(--muted));
+  background-image: linear-gradient(
+    100deg,
+    transparent 20%,
+    hsl(var(--spice-400) / 0.09) 42%,
+    hsl(var(--spice-200) / 0.14) 50%,
+    hsl(var(--spice-400) / 0.09) 58%,
+    transparent 80%
+  );
+  background-size: 220% 100%;
+  background-repeat: no-repeat;
+  animation: skeletonSweep 1.5s ease-in-out infinite;
+}
+@keyframes skeletonSweep {
+  0%   { background-position: 140% 0; }
+  100% { background-position: -60% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-sweep {
+    animation: none;
+    background-image: none;
+  }
 }
 
 /* ─── Loading dots ─── */

@@ -12,8 +12,18 @@ export const ChevronLeft = ({ size = 24, ...p }: P) => (
 export const ChevronRight = ({ size = 24, ...p }: P) => (
   <svg {...base(size)} {...p}><path d="M9 5l7 7-7 7" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
 );
+// A real cog. The previous glyph was a centre dot with eight radiating spokes,
+// which is the same drawing as `Sun` — two different settings meant one icon.
 export const Gear = ({ size = 24, ...p }: P) => (
-  <svg {...base(size)} {...p}><circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
+  <svg {...base(size)} {...p}>
+    <path
+      d="M10.32 3.3a1 1 0 0 1 .98-.8h1.4a1 1 0 0 1 .98.8l.26 1.32a7.5 7.5 0 0 1 1.62.94l1.27-.44a1 1 0 0 1 1.2.45l.7 1.21a1 1 0 0 1-.22 1.25l-1.02.88a7.6 7.6 0 0 1 0 1.88l1.02.88a1 1 0 0 1 .22 1.25l-.7 1.21a1 1 0 0 1-1.2.45l-1.27-.44a7.5 7.5 0 0 1-1.62.94l-.26 1.32a1 1 0 0 1-.98.8h-1.4a1 1 0 0 1-.98-.8l-.26-1.32a7.5 7.5 0 0 1-1.62-.94l-1.27.44a1 1 0 0 1-1.2-.45l-.7-1.21a1 1 0 0 1 .22-1.25l1.02-.88a7.6 7.6 0 0 1 0-1.88l-1.02-.88a1 1 0 0 1-.22-1.25l.7-1.21a1 1 0 0 1 1.2-.45l1.27.44a7.5 7.5 0 0 1 1.62-.94z"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinejoin="round"
+    />
+    <circle cx="12" cy="12" r="2.9" stroke="currentColor" strokeWidth="1.7" />
+  </svg>
 );
 export const Lock = ({ size = 24, ...p }: P) => (
   <svg {...base(size)} {...p}><rect x="4" y="10" width="16" height="11" rx="2.5" stroke="currentColor" strokeWidth="2.5" /><path d="M8 10V7a4 4 0 0 1 8 0v3" stroke="currentColor" strokeWidth="2.5" /></svg>
@@ -78,6 +88,34 @@ export const Search = ({ size = 24, ...p }: P) => (
 );
 export const Trash = ({ size = 24, ...p }: P) => (
   <svg {...base(size)} {...p}><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+);
+
+export const BookIcon = ({ size = 24, ...p }: P) => (
+  <svg {...base(size)} {...p}><path d="M4 4.5A1.5 1.5 0 0 1 5.5 3H10a2 2 0 0 1 2 2v15a2 2 0 0 0-2-2H5.5A1.5 1.5 0 0 1 4 16.5z" stroke="currentColor" strokeWidth="1.9" strokeLinejoin="round" /><path d="M20 4.5A1.5 1.5 0 0 0 18.5 3H14a2 2 0 0 0-2 2v15a2 2 0 0 1 2-2h4.5a1.5 1.5 0 0 0 1.5-1.5z" stroke="currentColor" strokeWidth="1.9" strokeLinejoin="round" /></svg>
+);
+export const Sparkle = ({ size = 24, ...p }: P) => (
+  <svg {...base(size)} {...p}><path d="M12 3l1.9 5.4L19.5 10l-5.6 1.6L12 17l-1.9-5.4L4.5 10l5.6-1.6z" stroke="currentColor" strokeWidth="1.9" strokeLinejoin="round" /><path d="M18.5 15.5l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /></svg>
+);
+export const Heart = ({ size = 24, ...p }: P) => (
+  <svg {...base(size)} {...p}><path d="M12 20s-7-4.4-7-9.3A4.2 4.2 0 0 1 12 8a4.2 4.2 0 0 1 7 2.7C19 15.6 12 20 12 20z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" /></svg>
+);
+export const HeartFilled = ({ size = 24, ...p }: P) => (
+  <svg {...base(size)} {...p}><path d="M12 20s-7-4.4-7-9.3A4.2 4.2 0 0 1 12 8a4.2 4.2 0 0 1 7 2.7C19 15.6 12 20 12 20z" fill="currentColor" /></svg>
+);
+export const Pencil = ({ size = 24, ...p }: P) => (
+  <svg {...base(size)} {...p}><path d="M4 20h4L19 9a2.5 2.5 0 0 0-3.5-3.5L4.5 16.5z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" /><path d="M14.5 6.5L17.5 9.5" stroke="currentColor" strokeWidth="2" /></svg>
+);
+export const ChevronDown = ({ size = 24, ...p }: P) => (
+  <svg {...base(size)} {...p}><path d="M5 9l7 7 7-7" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
+);
+export const Snowflake = ({ size = 24, ...p }: P) => (
+  <svg {...base(size)} {...p}><path d="M12 2v20M4.2 6.5l15.6 9M19.8 6.5l-15.6 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /><path d="M9.5 4L12 6.5 14.5 4M9.5 20L12 17.5 14.5 20M4.4 10.2l.6-3.4 3.4-.4M19.6 13.8l-.6 3.4-3.4.4M19.6 10.2l-.6-3.4-3.4-.4M4.4 13.8l.6 3.4 3.4.4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
+);
+export const Target = ({ size = 24, ...p }: P) => (
+  <svg {...base(size)} {...p}><circle cx="12" cy="12" r="8.5" stroke="currentColor" strokeWidth="2" /><circle cx="12" cy="12" r="4.5" stroke="currentColor" strokeWidth="2" /><circle cx="12" cy="12" r="1.2" fill="currentColor" /></svg>
+);
+export const Users = ({ size = 24, ...p }: P) => (
+  <svg {...base(size)} {...p}><circle cx="9" cy="8" r="3.4" stroke="currentColor" strokeWidth="2" /><path d="M3 20a6 6 0 0 1 12 0" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /><path d="M16 5.4a3.4 3.4 0 0 1 0 6.6M17.5 14.6A6 6 0 0 1 21 20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
 );
 
 // iOS status-bar glyphs

@@ -8,7 +8,7 @@ export default function SetTask() {
   const empty = !state.taskDraft.trim();
 
   return (
-    <div className="anim-slideUp absolute inset-0 flex flex-col bg-background px-6 pb-10 pt-[78px]">
+    <div className="anim-slideUp absolute inset-0 flex flex-col bg-background px-6 pb-10 pt-[calc(78px_+_var(--safe-t))]">
       <button
         onClick={() => actions.go("home")}
         className="mb-[26px] grid h-10 w-10 place-items-center rounded-[13px] border border-sand-line raise text-muted-foreground transition-colors hover:text-foreground"

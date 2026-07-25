@@ -24,10 +24,13 @@
     <meta property="og:title" content="Clarity — Get back your clarity." />
     <meta property="og:description" content="Lock away distractions, name one focus, and earn your attention back." />
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="/clarity/og-image.png" />
+    <!-- Vite rewrites <link href>/<script src> for the GH Pages base automatically
+         but not arbitrary <meta content>, and social crawlers need an absolute
+         URL regardless — hardcoded to the real deployed location on purpose. -->
+    <meta property="og:image" content="https://ishaanpthegoat.github.io/clarity/clarity/og-image.png" />
 
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:image" content="/clarity/og-image.png" />
+    <meta name="twitter:image" content="https://ishaanpthegoat.github.io/clarity/clarity/og-image.png" />
   </head>
 
   <body>

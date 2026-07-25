@@ -20,7 +20,7 @@ export default function Checkin() {
 
   return (
     <div
-      className="anim-fadeIn clarity-scroll absolute inset-0 flex flex-col overflow-y-auto px-[22px] pb-[118px] pt-[78px]"
+      className="anim-fadeIn clarity-scroll absolute inset-0 flex flex-col overflow-y-auto px-[22px] pb-[118px] pt-[calc(78px_+_var(--safe-t))]"
       style={{ background: "radial-gradient(90% 55% at 50% 0%,hsl(24 40% 10%),hsl(var(--void)) 68%)" }}
     >
       <h1 className="font-display text-[32px] font-semibold uppercase tracking-[0.03em]">

@@ -21,6 +21,7 @@ import Paywall from "./screens/Paywall";
 import Articles from "./screens/Articles";
 import Insights from "./screens/Insights";
 import Milestones from "./screens/Milestones";
+import ProjectGrade from "./screens/ProjectGrade";
 
 function Screens() {
   const { state } = useClarity();
@@ -41,6 +42,7 @@ function Screens() {
     case "articles": return <Articles />;
     case "insights": return <Insights />;
     case "milestones": return <Milestones />;
+    case "grade": return <ProjectGrade />;
     default: return <Home />;
   }
 }
@@ -61,6 +63,8 @@ function useShortcuts() {
         case "f": actions.startFocus(); break;
         case "l": actions.toggleLock(); break;
         case "i": actions.go("insights"); break;
+        case "r": actions.go("articles"); break;
+        case "p": actions.go("projects"); break;
         case ",": actions.go("settings"); break;
         case "escape": if (state.view !== "home") actions.go("home"); break;
         default: return;
@@ -90,7 +94,10 @@ function Device() {
         <TabBar />
         <CommandPalette />
         {!onSplash && (
-          <div className="pointer-events-none absolute bottom-[9px] left-1/2 z-[90] h-[5px] w-[134px] -translate-x-1/2 rounded-[3px] bg-foreground/30" />
+          <div
+            className="pointer-events-none absolute left-1/2 z-[90] h-[5px] w-[134px] -translate-x-1/2 rounded-[3px] bg-foreground/30"
+            style={{ bottom: "calc(9px + var(--safe-b))" }}
+          />
         )}
       </div>
     </div>

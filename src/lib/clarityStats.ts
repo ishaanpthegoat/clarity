@@ -125,21 +125,26 @@ export function getDay(days: DayMap, key: string): DayLog {
  * A day counts toward the streak once it clears `thresholdMinutes` of focus.
  * Today is never streak-breaking — it is still in progress — so the walk
  * starts at yesterday unless today has already qualified.
+ *
+ * `frozen` holds day-keys the user spent a streak freeze on. A frozen day
+ * bridges the gap but does not itself add to the count: missing a day and
+ * paying for it should never look identical to having shown up.
  */
-export function computeStreak(days: DayMap, thresholdMinutes = 10): number {
+export function computeStreak(
+  days: DayMap,
+  thresholdMinutes = 10,
+  frozen: ReadonlySet<string> = new Set(),
+): number {
   const need = thresholdMinutes * 60;
-  const qualifies = (k: string) => getDay(days, k).focusedSeconds >= need;
+  const earned = (k: string) => getDay(days, k).focusedSeconds >= need;
+  const survives = (k: string) => earned(k) || frozen.has(k);
 
   let cursor = dateKey();
-  let streak = 0;
-
-  if (qualifies(cursor)) {
-    streak = 1;
-  }
+  let streak = earned(cursor) ? 1 : 0;
   cursor = addDays(cursor, -1);
 
-  while (qualifies(cursor)) {
-    streak += 1;
+  while (survives(cursor)) {
+    if (earned(cursor)) streak += 1;
     cursor = addDays(cursor, -1);
     if (streak > 3650) break; // paranoia against a corrupt map
   }
@@ -147,10 +152,14 @@ export function computeStreak(days: DayMap, thresholdMinutes = 10): number {
 }
 
 /** The streak the user would lose by not focusing today. 0 when today already counts. */
-export function streakAtRisk(days: DayMap, thresholdMinutes = 10): number {
+export function streakAtRisk(
+  days: DayMap,
+  thresholdMinutes = 10,
+  frozen: ReadonlySet<string> = new Set(),
+): number {
   const need = thresholdMinutes * 60;
   if (getDay(days, dateKey()).focusedSeconds >= need) return 0;
-  return computeStreak(days, thresholdMinutes);
+  return computeStreak(days, thresholdMinutes, frozen);
 }
 
 // ── scores ───────────────────────────────────────────────────────────

@@ -121,11 +121,11 @@ test("walk every screen", async ({ page }) => {
   await shot(page, "06-checkin");
 
   await tab("Home").click();
-  await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByRole("button", { name: /^Settings —/ }).click();
   await shot(page, "07-settings");
 
   // Focus session
-  await page.getByRole("button", { name: "Back to home" }).click();
+  await page.getByRole("button", { name: /^Back —/ }).click();
   await page.getByRole("button", { name: /Start a .* session/ }).click();
   await shot(page, "08-focus");
 
@@ -141,9 +141,9 @@ test("walk every screen", async ({ page }) => {
   await page.getByRole("button", { name: /Open your home screen/ }).click();
   await shot(page, "11-springboard");
 
-  // Daily read
-  await page.getByRole("button", { name: /Clarity is/ }).click();
-  await page.getByRole("button", { name: /Read & explain it back/ }).click();
+  // Daily read — its own tab now, and it opens on today's article.
+  await page.getByRole("button", { name: "Open Clarity" }).click();
+  await tab("Read").click();
   await shot(page, "12-articles");
 
   // Command palette
@@ -153,10 +153,10 @@ test("walk every screen", async ({ page }) => {
   await page.keyboard.press("Escape");
 
   // Light theme
-  await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByRole("button", { name: /^Settings —/ }).click();
   await page.getByRole("button", { name: "Light theme" }).click();
   await shot(page, "14-settings-light");
-  await page.getByRole("button", { name: "Back to home" }).click();
+  await page.getByRole("button", { name: /^Back —/ }).click();
   await shot(page, "15-home-light");
 
   expect(errors, `console errors:\n${errors.join("\n")}`).toEqual([]);
@@ -179,9 +179,16 @@ test("every control meets the 44px touch target floor", async ({ page }) => {
     ["todos", async () => {
       await page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "To-do", exact: true }).click();
     }],
+    ["read", async () => {
+      await page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "Read", exact: true }).click();
+    }],
+    ["projects", async () => {
+      await page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "Projects", exact: true }).click();
+      await page.waitForTimeout(900); // the ideas feed has to arrive
+    }],
     ["settings", async () => {
       await page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "Home", exact: true }).click();
-      await page.getByRole("button", { name: "Settings" }).click();
+      await page.getByRole("button", { name: /^Settings —/ }).click();
     }],
   ];
 

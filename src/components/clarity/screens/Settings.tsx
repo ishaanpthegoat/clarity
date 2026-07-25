@@ -1,14 +1,20 @@
 ﻿// Clarity — Settings. Every row here changes something; nothing is display-only.
 import { useState } from "react";
-import { useClarity } from "@/lib/clarityStore";
+import { useClarity, GOAL_BOUNDS, SESSION_BOUNDS } from "@/lib/clarityStore";
 import { SOUNDSCAPES } from "@/lib/soundscape";
-import { formatDuration } from "@/lib/clarityStats";
+import { APP_CATALOG } from "@/lib/clarityData";
 import ClaritySwitch from "../ClaritySwitch";
-import { ChevronLeft, Sun, MoonIcon, Trash } from "../icons";
+import AppLogo from "../AppLogo";
+import DurationSlider from "../DurationSlider";
+import { IconAction, Tip } from "../Action";
+import { ChevronLeft, Sun, MoonIcon, Trash, Plus, X } from "../icons";
 
 const DAY_LETTERS = ["S", "M", "T", "W", "T", "F", "S"];
-const SESSION_PRESETS = [15, 25, 50, 90];
-const GOAL_PRESETS = [60, 120, 180, 300];
+/** Marks under the session track. Deliberately sparse — the readout is exact. */
+const SESSION_TICKS = [5, 60, 180, 300, 420];
+const SESSION_PRESETS = [15, 25, 50, 90, 180];
+const GOAL_TICKS = [10, 180, 360, 540, 720];
+const GOAL_PRESETS = [60, 120, 180, 300, 480];
 
 function Row({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
@@ -35,23 +41,15 @@ export default function Settings() {
   const { state, actions } = useClarity();
   const [confirmReset, setConfirmReset] = useState(false);
 
-  const chip = (active: boolean) =>
-    `grid h-11 min-w-11 place-items-center rounded-[10px] px-3 text-[13px] font-semibold transition-colors ${
-      active
-        ? "bg-spice-400/16 text-spice-200 border border-spice-400/40"
-        : "border border-sand-line text-muted-foreground hover:text-foreground"
-    }`;
-
   return (
-    <div className="anim-slideUp clarity-scroll absolute inset-0 flex flex-col overflow-y-auto bg-background px-[22px] pb-[118px] pt-[78px]">
-      <div className="mb-6 flex items-center gap-3.5">
-        <button
+    <div className="anim-slideUp clarity-scroll absolute inset-0 flex flex-col overflow-y-auto bg-background px-[22px] pb-[118px] pt-[calc(78px_+_var(--safe-t))]">
+      <div className="mb-6 flex items-center gap-3">
+        <IconAction
+          icon={<ChevronLeft size={18} />}
+          label="Back"
+          tooltip="Back to home"
           onClick={() => actions.go("home")}
-          className="grid h-11 w-11 place-items-center rounded-[13px] border border-sand-line raise text-muted-foreground transition-colors hover:text-foreground"
-          aria-label="Back to home"
-        >
-          <ChevronLeft size={18} />
-        </button>
+        />
         <h1 className="font-display text-[32px] font-semibold uppercase tracking-[0.03em]">Settings</h1>
       </div>
 
@@ -119,28 +117,32 @@ export default function Settings() {
       </Section>
 
       <Section title="Focus">
-        <Row label="Session length" hint={`New sessions run ${state.sessionMinutes} minutes`}>
-          <div className="flex gap-1.5">
-            {SESSION_PRESETS.map((m) => (
-              <button
-                key={m}
-                onClick={() => actions.setSessionMinutes(m)}
-                className={chip(state.sessionMinutes === m)}
-              >
-                {m}
-              </button>
-            ))}
-          </div>
-        </Row>
-        <Row label="Daily goal" hint={`${formatDuration(state.goalMinutes * 60)} of deep work`}>
-          <div className="flex gap-1.5">
-            {GOAL_PRESETS.map((m) => (
-              <button key={m} onClick={() => actions.setGoalMinutes(m)} className={chip(state.goalMinutes === m)}>
-                {m < 60 ? `${m}m` : `${m / 60}h`}
-              </button>
-            ))}
-          </div>
-        </Row>
+        {/* Sliders, not preset chips — the old four buttons capped a session at
+            90 minutes, which is shorter than plenty of real deep work. */}
+        <DurationSlider
+          id="session-length"
+          label="Session length"
+          hint="How long a new focus session runs. Drag all the way for a seven-hour block."
+          value={state.sessionMinutes}
+          onChange={actions.setSessionMinutes}
+          min={SESSION_BOUNDS.min}
+          max={SESSION_BOUNDS.max}
+          step={SESSION_BOUNDS.step}
+          ticks={SESSION_TICKS}
+          presets={SESSION_PRESETS}
+        />
+        <DurationSlider
+          id="daily-goal"
+          label="Daily goal"
+          hint="Deep work you're aiming for each day. Moves in ten-minute steps."
+          value={state.goalMinutes}
+          onChange={actions.setGoalMinutes}
+          min={GOAL_BOUNDS.min}
+          max={GOAL_BOUNDS.max}
+          step={GOAL_BOUNDS.step}
+          ticks={GOAL_TICKS}
+          presets={GOAL_PRESETS}
+        />
         <Row
           label="Commit Mode by default"
           hint="No pause and no early exit, unless you confirm it"
@@ -230,40 +232,73 @@ export default function Settings() {
 
       <Section title="Locked apps">
         {state.apps.map((app) => (
-          <Row key={app.id} label={app.name}>
-            <div className="flex items-center gap-3.5">
-              <span
-                className="grid h-[34px] w-[34px] place-items-center rounded-[10px] text-[17px]"
-                style={{ background: app.color }}
-              >
-                {app.emoji}
-              </span>
-              <ClaritySwitch
-                on={app.locked}
-                onClick={() => actions.toggleAppLock(app.id)}
-                aria-label={`Lock ${app.name}`}
-              />
+          <div key={app.id} className="flex items-center gap-3 py-3">
+            <AppLogo app={app} size={38} />
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-[15.5px] font-semibold">{app.name}</div>
+              <div className="mt-0.5 text-[12.5px] text-muted-foreground">
+                {app.locked ? "Locked while Clarity is on" : "Open — not being watched"}
+              </div>
             </div>
-          </Row>
+            <IconAction
+              icon={<X size={14} />}
+              label="Remove"
+              tooltip={`Stop watching ${app.name} entirely`}
+              onClick={() => actions.removeApp(app.id)}
+              side="left"
+              hideLabel
+            />
+            <ClaritySwitch
+              on={app.locked}
+              onClick={() => actions.toggleAppLock(app.id)}
+              aria-label={`Lock ${app.name}`}
+            />
+          </div>
         ))}
+
+        {/* Anything from the catalogue that isn't already on the list. */}
+        {APP_CATALOG.filter((c) => !state.apps.some((a) => a.id === c.id)).length > 0 && (
+          <div className="py-4">
+            <div className="mb-3 text-[13px] text-muted-foreground">Add another app</div>
+            <div className="flex flex-wrap gap-2">
+              {APP_CATALOG.filter((c) => !state.apps.some((a) => a.id === c.id)).map((c) => (
+                <Tip key={c.id} label={`Start locking ${c.name}`}>
+                  <button
+                    onClick={() => actions.addApp(c.id)}
+                    aria-label={`Add ${c.name}`}
+                    className="flex h-11 items-center gap-2 rounded-[12px] border border-sand-line raise pl-1.5 pr-3 text-[13.5px] font-semibold text-foreground/85 transition-colors hover:border-spice-400/40 hover:text-foreground"
+                  >
+                    <AppLogo app={{ ...c }} size={30} />
+                    {c.name}
+                    <Plus size={13} />
+                  </button>
+                </Tip>
+              ))}
+            </div>
+          </div>
+        )}
       </Section>
 
       <Section title="Your data">
-        <Row label="Export history" hint="Every session and day, as JSON">
-          <button
-            onClick={actions.exportData}
-            className="grid h-11 place-items-center rounded-[10px] border border-sand-line px-4 text-[13.5px] font-semibold text-foreground/85 transition-colors hover:text-foreground"
-          >
-            Export
-          </button>
+        <Row label="Export history" hint="Every session, day and project, as JSON">
+          <Tip label="Download your whole history as a JSON file">
+            <button
+              onClick={actions.exportData}
+              className="grid h-11 place-items-center rounded-[10px] border border-sand-line px-4 text-[13.5px] font-semibold text-foreground/85 transition-colors hover:text-foreground"
+            >
+              Export
+            </button>
+          </Tip>
         </Row>
         <Row label="Reset everything" hint="Clears your history. This cannot be undone.">
-          <button
-            onClick={() => setConfirmReset(true)}
-            className="flex h-11 items-center gap-1.5 rounded-[10px] border border-destructive/40 px-4 text-[13.5px] font-semibold text-destructive"
-          >
-            <Trash size={14} /> Reset
-          </button>
+          <Tip label="Delete every logged day, session and project">
+            <button
+              onClick={() => setConfirmReset(true)}
+              className="flex h-11 items-center gap-1.5 rounded-[10px] border border-destructive/40 px-4 text-[13.5px] font-semibold text-destructive"
+            >
+              <Trash size={14} /> Reset
+            </button>
+          </Tip>
         </Row>
       </Section>
 

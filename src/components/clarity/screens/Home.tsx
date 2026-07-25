@@ -2,7 +2,7 @@
 // a day. Every number on this screen comes out of the logged history.
 import { useRef } from "react";
 import { useClarity } from "@/lib/clarityStore";
-import { QUOTES, ARTICLES } from "@/lib/clarityData";
+import { QUOTES, todaysArticle } from "@/lib/clarityData";
 import {
   dateKey,
   formatDayLabel,
@@ -15,8 +15,10 @@ import {
 import RingHero from "../RingHero";
 import WeekChart from "../WeekChart";
 import ClaritySwitch from "../ClaritySwitch";
+import AppLogo from "../AppLogo";
+import { IconAction, Tip } from "../Action";
 import {
-  ChevronLeft, ChevronRight, Gear, Lock, ArrowUpRight, Check, Flame, Shield, Search,
+  ChevronLeft, ChevronRight, Gear, ArrowUpRight, Check, Flame, Shield, Search, Snowflake,
 } from "../icons";
 
 function greeting(): string {
@@ -32,18 +34,20 @@ export default function Home() {
   const heroRef = useRef<HTMLDivElement>(null);
   const greetRef = useRef<HTMLDivElement>(null);
   const compactRef = useRef<HTMLDivElement>(null);
+  const headerBgRef = useRef<HTMLDivElement>(null);
 
   const quote = QUOTES[state.quoteIndex % QUOTES.length];
   const projCount = state.selProj.length;
   const viewingToday = isToday(state.viewDate);
   const day = derived.viewedDay;
 
-  const todayArticle = ARTICLES[new Date().getDay() % ARTICLES.length];
+  const todayArticle = todaysArticle();
   const readDone = state.articlesDone.includes(todayArticle.id);
 
   const week = totalsFor(state.days, lastSevenDays());
   const delta = weekOverWeekDelta(state.days);
   const held = day.pulls ? `${day.holds}/${day.pulls}` : "—";
+  const frozenToday = state.freezeDays.includes(dateKey());
 
   function onScroll(e: React.UIEvent<HTMLDivElement>) {
     const y = e.currentTarget.scrollTop;
@@ -59,6 +63,10 @@ export default function Home() {
       compactRef.current.style.opacity = String(c);
       compactRef.current.style.transform = `translateY(${(1 - c) * -6}px)`;
     }
+    // The header floats over the scroll body, so cards would otherwise slide
+    // straight through the date nav and the locking switch. Fade a backdrop in
+    // on the same ramp as the compact title.
+    if (headerBgRef.current) headerBgRef.current.style.opacity = String(c);
   }
 
   // Visual chrome stays small; the tap target underneath is always >= 44px.
@@ -68,49 +76,64 @@ export default function Home() {
 
   return (
     <div className="anim-fadeIn absolute inset-0">
-      {/* ── header ── */}
-      <div className="absolute left-0 right-0 top-[52px] z-40 h-[120px] px-5">
-        <div className="relative flex h-11 items-center justify-center">
-          <button
-            onClick={() => actions.stepViewDate(-1)}
-            className={`group ${hit}`}
-            aria-label="Previous day"
-          >
-            <span className={`${chip} h-[26px] w-[26px]`}><ChevronLeft size={12} /></span>
-          </button>
-          <button
-            onClick={() => actions.setViewDate(dateKey())}
-            className="font-display grid h-11 place-items-center whitespace-nowrap px-1"
-            aria-label={`${formatDayLabel(state.viewDate)} — jump to today`}
-          >
-            <span className="rounded-full border border-sand-line raise px-[15px] py-[6px] text-[12px] font-semibold uppercase tracking-[0.18em] text-foreground/85">
-              {formatDayLabel(state.viewDate)}
-            </span>
-          </button>
-          <button
-            onClick={() => actions.stepViewDate(1)}
-            disabled={viewingToday}
-            className={`group ${hit}`}
-            aria-label="Next day"
-          >
-            <span className={`${chip} h-[26px] w-[26px]`}><ChevronRight size={12} /></span>
-          </button>
+      {/* Sits under the header and over the scroll body. */}
+      <div
+        ref={headerBgRef}
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 z-30 h-[182px] opacity-0"
+        style={{
+          background:
+            "linear-gradient(to bottom, hsl(var(--background)) 0%, hsl(var(--background)) 74%, transparent 100%)",
+        }}
+      />
 
-          <div className="absolute right-[-6px] flex items-center">
+      {/* ── header ── */}
+      <div className="absolute left-0 right-0 z-40 h-[120px] px-5" style={{ top: "calc(52px + var(--safe-t))" }}>
+        <div className="relative flex h-11 items-center justify-center">
+          <Tip label="Show the day before">
             <button
+              onClick={() => actions.stepViewDate(-1)}
+              className={`group ${hit}`}
+              aria-label="Previous day"
+            >
+              <span className={`${chip} h-[26px] w-[26px]`}><ChevronLeft size={12} /></span>
+            </button>
+          </Tip>
+          <Tip label={viewingToday ? "You're looking at today" : "Jump back to today"}>
+            <button
+              onClick={() => actions.setViewDate(dateKey())}
+              className="font-display grid h-11 place-items-center whitespace-nowrap px-1"
+              aria-label={`${formatDayLabel(state.viewDate)} — jump to today`}
+            >
+              <span className="rounded-full border border-sand-line raise px-[15px] py-[6px] text-[12px] font-semibold uppercase tracking-[0.18em] text-foreground/85">
+                {formatDayLabel(state.viewDate)}
+              </span>
+            </button>
+          </Tip>
+          <Tip label={viewingToday ? "There's no history for tomorrow yet" : "Show the day after"}>
+            <button
+              onClick={() => actions.stepViewDate(1)}
+              disabled={viewingToday}
+              className={`group ${hit}`}
+              aria-label="Next day"
+            >
+              <span className={`${chip} h-[26px] w-[26px]`}><ChevronRight size={12} /></span>
+            </button>
+          </Tip>
+
+          <div className="absolute right-[-8px] flex items-center gap-0.5">
+            <IconAction
+              icon={<Search size={15} />}
+              label="Search"
+              tooltip="Search Clarity — or press ⌘K"
               onClick={() => actions.setPaletteOpen(true)}
-              className={`group ${hit}`}
-              aria-label="Search Clarity"
-            >
-              <span className={`${chip} h-9 w-9`}><Search size={16} /></span>
-            </button>
-            <button
+            />
+            <IconAction
+              icon={<Gear size={16} />}
+              label="Settings"
+              tooltip="Sessions, locking, appearance and your data"
               onClick={() => actions.go("settings")}
-              className={`group ${hit}`}
-              aria-label="Settings"
-            >
-              <span className={`${chip} h-9 w-9`}><Gear size={17} /></span>
-            </button>
+            />
           </div>
         </div>
 
@@ -141,7 +164,7 @@ export default function Home() {
       {/* ── scroll body ── */}
       <div
         onScroll={onScroll}
-        className="clarity-scroll absolute inset-0 overflow-y-auto overflow-x-hidden px-[18px] pb-[118px] pt-[178px]"
+        className="clarity-scroll absolute inset-0 overflow-y-auto overflow-x-hidden px-[18px] pb-[118px] pt-[calc(178px_+_var(--safe-t))]"
       >
         <div ref={heroRef} style={{ transformOrigin: "top center" }}>
           <RingHero />
@@ -208,6 +231,36 @@ export default function Home() {
           ))}
         </div>
 
+        {/* streak freeze — surfaced only when there is something to lose today */}
+        {viewingToday && derived.streak > 0 && derived.today.focusedSeconds < 600 && (
+          <div className="anim-cardUp mb-3.5 flex items-center gap-3 rounded-[18px] border border-spice-400/25 bg-spice-400/[0.07] px-4 py-3">
+            <span className="flex-none text-spice-300"><Snowflake size={17} /></span>
+            <span className="flex-1 text-[13.5px] leading-[1.4]">
+              <span className="font-semibold">
+                Your {derived.streak}-day streak is on the line.
+              </span>{" "}
+              <span className="text-muted-foreground">
+                {frozenToday
+                  ? "Frozen — today can't break it."
+                  : derived.freezeAvailable
+                    ? "Ten focused minutes keeps it, or freeze the day."
+                    : "Ten focused minutes keeps it."}
+              </span>
+            </span>
+            {!frozenToday && derived.freezeAvailable && (
+              <Tip label="Spend your weekly freeze so today can't break the streak">
+                <button
+                  onClick={actions.spendFreeze}
+                  aria-label="Freeze today's streak"
+                  className="h-11 flex-none rounded-[12px] border border-spice-400/40 bg-spice-400/[0.12] px-3.5 text-[12.5px] font-semibold text-spice-200"
+                >
+                  Freeze
+                </button>
+              </Tip>
+            )}
+          </div>
+        )}
+
         {/* quote */}
         <button
           onClick={actions.nextQuote}
@@ -221,29 +274,50 @@ export default function Home() {
           <div className="mt-3 text-[12.5px] font-medium text-muted-foreground">{quote.author}</div>
         </button>
 
-        {/* today's read */}
-        <button
-          onClick={() => actions.openArticle(todayArticle.id)}
-          className="anim-cardUp sietch-card card-lift mb-3.5 w-full overflow-hidden p-5 text-left"
-          style={{ animationDelay: ".085s" }}
-        >
-          <div className="mb-2 flex items-center justify-between">
-            <span className="eyebrow">Today&rsquo;s read · {todayArticle.category}</span>
-            {readDone ? (
-              <span className="flex items-center gap-1 text-[12px] font-semibold text-spice-200">
-                <Check size={12} /> Done
-              </span>
-            ) : (
-              <span className="text-[12px] text-muted-foreground">{todayArticle.readMins} min</span>
-            )}
-          </div>
-          <div className="text-[19px] font-bold leading-[1.25] tracking-[-0.01em]">{todayArticle.title}</div>
-          <div className="mt-2 text-[14px] leading-[1.45] text-muted-foreground">{todayArticle.excerpt}</div>
-          <div className="mt-3 flex items-center gap-1.5 text-[13px] font-semibold text-spice-400">
-            {readDone ? "Read again" : "Read & explain it back"}
-            <ArrowUpRight size={13} />
-          </div>
-        </button>
+        {/* today's read — stays on the front page, and hands off to the Read tab */}
+        <div className="anim-cardUp sietch-card mb-3.5 overflow-hidden" style={{ animationDelay: ".085s" }}>
+          <Tip label="Open today's read in the Read tab">
+            <button
+              onClick={() => actions.openArticle(todayArticle.id)}
+              className="w-full p-5 text-left"
+              aria-label={`Read today's article: ${todayArticle.title}`}
+            >
+              <div className="mb-2 flex items-center justify-between">
+                <span className="eyebrow">Today&rsquo;s read · {todayArticle.category}</span>
+                {readDone ? (
+                  <span className="flex items-center gap-1 text-[12px] font-semibold text-spice-200">
+                    <Check size={12} /> Done
+                  </span>
+                ) : (
+                  <span className="text-[12px] text-muted-foreground">{todayArticle.readMins} min</span>
+                )}
+              </div>
+              <div className="text-[19px] font-bold leading-[1.25] tracking-[-0.01em]">
+                {todayArticle.title}
+              </div>
+              <div className="mt-2 text-[14px] leading-[1.45] text-muted-foreground">
+                {todayArticle.excerpt}
+              </div>
+              <div className="mt-3 flex items-center gap-1.5 text-[13px] font-semibold text-spice-400">
+                {readDone ? "Read it again" : "Read it"}
+                <ArrowUpRight size={13} />
+              </div>
+            </button>
+          </Tip>
+
+          {!readDone && (
+            <Tip label="Skip straight to recording — this opens the Read tab with the camera ready">
+              <button
+                onClick={() => actions.startArticleRecord(todayArticle.id)}
+                className="flex w-full items-center justify-center gap-1.5 border-t border-sand-line px-5 py-3.5 text-[13px] font-semibold text-spice-400"
+                aria-label="Record your understanding of today's read"
+              >
+                Record my understanding
+                <ArrowUpRight size={13} />
+              </button>
+            </Tip>
+          )}
+        </div>
 
         {/* this week's projects */}
         <button
@@ -280,30 +354,34 @@ export default function Home() {
             <span className="eyebrow">Locked for now</span>
             <span className="text-[12px] text-muted-foreground">Tap to see</span>
           </div>
-          <div
-            className="flex justify-between gap-2.5 transition-opacity"
-            style={{ opacity: state.locking ? 1 : 0.35 }}
-          >
+          <div className="flex flex-wrap justify-start gap-x-3 gap-y-4">
             {state.apps.map((app) => (
-              <button
+              <Tip
                 key={app.id}
-                onClick={() => actions.openApp(app)}
-                className="flex flex-1 flex-col items-center gap-2"
-                aria-label={`Open ${app.name}`}
+                label={
+                  !state.locking
+                    ? `${app.name} is open — locking is off`
+                    : app.locked
+                      ? `${app.name} is locked. Tap to see what's waiting on the other side.`
+                      : `${app.name} isn't locked`
+                }
               >
-                <span
-                  className="relative grid aspect-square w-full max-w-[60px] place-items-center rounded-[15px] text-[26px] shadow-sietch-card"
-                  style={{ background: app.color }}
+                <button
+                  onClick={() => actions.openApp(app)}
+                  className="flex w-[60px] flex-col items-center gap-2"
+                  aria-label={`Open ${app.name}${app.locked && state.locking ? " — locked" : ""}`}
                 >
-                  {app.emoji}
-                  {app.locked && (
-                    <span className="absolute -bottom-1 -right-1 grid h-[22px] w-[22px] place-items-center rounded-full border-[2.5px] border-sietch bg-spice-500 text-white">
-                      <Lock size={10} />
-                    </span>
-                  )}
-                </span>
-                <span className="text-[11px] font-medium text-muted-foreground">{app.name}</span>
-              </button>
+                  <AppLogo
+                    app={app}
+                    size={60}
+                    locked={app.locked}
+                    muted={!state.locking}
+                  />
+                  <span className="w-full truncate text-center text-[11px] font-medium text-muted-foreground">
+                    {app.name}
+                  </span>
+                </button>
+              </Tip>
             ))}
           </div>
           <button

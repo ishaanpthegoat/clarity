@@ -42,6 +42,24 @@ The repeated form is the **spice ring**: the distance you've covered is a solid 
 - **Evening check-in** — mood, reflection, and what you made time for, saved onto the day
 - **Light and dark** — Arrakis at night, or midday glare
 
+### Added in the second pass
+
+- **Scrollytelling first run** — five cinematic acts on one pinned stage, cross-faded by scroll position rather than paged through
+- **Real brand marks** — every lockable app carries its authentic icon, so the block screen shows exactly what you reached for
+- **App catalogue** — add or drop which apps Clarity watches, from nine real ones
+- **Session length up to 7 hours** — a slider with detents and haptics, replacing four preset chips that capped out at 90 minutes
+- **Daily goal in ten-minute steps** — 10 minutes to 12 hours
+- **Sectioned Projects tab** — *This week*, *All* and *Grade*, with the public ideas feed deliberately kept on the main page
+- **Project grader** — photograph what you've built and have it scored against a four-part rubric, with one concrete next step
+- **Project workspace** — status, progress, working notes, linked to-dos and the full grade history, in a drag-dismissible sheet
+- **Public ideas** — procedural avatars, cheers, and adopting someone else's idea straight into your own projects
+- **Daily Read as its own tab** — opens on today's article, and "record my understanding" anywhere hands off into it already recording
+- **Streak freeze** — one grace day per rolling week, offered only when the streak is actually at risk
+- **Skeletons** — a warm sweep in reading order wherever there is genuinely something to wait for
+- **Optimistic writes** — cheers and notes commit on the tap and roll back visibly if the write fails
+- **A word on every control** — no naked icons; every button carries a label and a tooltip
+- **One motion system** — `src/lib/motion.ts` holds every curve, duration and spring, following Emil Kowalski's rules
+
 ### Keyboard
 
 | Key | Action |
@@ -51,6 +69,8 @@ The repeated form is the **spice ring**: the distance you've covered is a solid 
 | `F` | Start a focus session |
 | `L` | Toggle locking |
 | `I` | Insights |
+| `R` | Daily Read |
+| `P` | Projects |
 | `,` | Settings |
 | `Esc` | Back to home |
 
@@ -58,10 +78,22 @@ The repeated form is the **spice ring**: the distance you've covered is a solid 
 
 - **Vite** + **React 18** + **TypeScript**
 - **Tailwind CSS**, with the palette and type roles as CSS variables in `src/index.css`
+- **Motion** (Framer Motion 12) for springs, shared-layout transitions and the scroll-driven intro
 - Ambient sound is synthesised with the **Web Audio API** — no audio files ship
 - **Capacitor** for native iOS/Android packaging
 - Self-contained state store (`src/lib/clarityStore.tsx`) with `localStorage` persistence
 - Pure derivations live in `src/lib/clarityStats.ts` and are unit-tested
+
+### The grader
+
+`src/lib/grader.ts` has two paths. Set `VITE_GRADER_ENDPOINT` to a server that
+holds your model key and the photo is scored by a model; leave it unset and it
+falls back to a deterministic on-device evaluation so the feature still works
+offline. The key never belongs in the client.
+
+```bash
+echo 'VITE_GRADER_ENDPOINT=https://your-server.example/grade' > .env.local
+```
 
 ## Getting started
 

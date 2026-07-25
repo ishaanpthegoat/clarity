@@ -18,7 +18,7 @@ export default function Review() {
   const score = state.submitScore ?? 87;
 
   return (
-    <div className="anim-fadeIn absolute inset-0 flex flex-col overflow-y-auto bg-background px-[22px] pb-[118px] pt-[78px]">
+    <div className="anim-fadeIn absolute inset-0 flex flex-col overflow-y-auto bg-background px-[22px] pb-[118px] pt-[calc(78px_+_var(--safe-t))]">
       <div className="mb-4">
         <span className="text-[28px] font-extrabold tracking-[-0.7px]">Get it rated</span>
       </div>

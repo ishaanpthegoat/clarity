@@ -8,7 +8,7 @@ export default function Todos() {
   const done = state.todos.length - left;
 
   return (
-    <div className="anim-fadeIn absolute inset-0 flex flex-col bg-background px-[22px] pb-[112px] pt-[78px]">
+    <div className="anim-fadeIn absolute inset-0 flex flex-col bg-background px-[22px] pb-[112px] pt-[calc(78px_+_var(--safe-t))]">
       <h1 className="font-display text-[34px] font-semibold uppercase tracking-[0.03em]">To-do</h1>
       <div className="mt-1.5 text-[14.5px] text-muted-foreground">
         {state.todos.length === 0 ? "Nothing on the list yet" : `${left} to go · ${done} done`}

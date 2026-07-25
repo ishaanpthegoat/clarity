@@ -3,20 +3,19 @@
 // forward; opening the app anyway costs a breath first.
 import { useState } from "react";
 import { useClarity } from "@/lib/clarityStore";
-import { BLOCK_LINES } from "@/lib/clarityData";
+import { BLOCK_LINES, SEED_APPS } from "@/lib/clarityData";
 import BreathGate from "../BreathGate";
-import { Lock, Clock } from "../icons";
+import AppLogo from "../AppLogo";
+import { Clock } from "../icons";
 
 export default function Block() {
   const { state, actions, derived } = useClarity();
   const [gate, setGate] = useState(false);
   const [opened, setOpened] = useState(false);
 
-  const ba = state.blockedApp ?? {
-    name: "Instagram",
-    emoji: "📸",
-    color: "linear-gradient(135deg,#feda75,#fa7e1e,#d62976,#962fbf)",
-  };
+  // The real mark, at the size of a real app icon — recognising exactly what
+  // you reached for is the entire mechanism of this screen.
+  const ba = state.blockedApp ?? SEED_APPS[0];
 
   // A different line each time, so the screen never becomes wallpaper.
   const line = BLOCK_LINES[derived.today.pulls % BLOCK_LINES.length];
@@ -64,19 +63,11 @@ export default function Block() {
 
   return (
     <div
-      className="anim-slideUp clarity-scroll absolute inset-0 flex flex-col overflow-y-auto px-[26px] pb-10 pt-[82px]"
+      className="anim-slideUp clarity-scroll absolute inset-0 flex flex-col overflow-y-auto px-[26px] pb-10 pt-[calc(82px_+_var(--safe-t))]"
       style={{ background: "radial-gradient(100% 70% at 50% 20%,hsl(22 50% 11%),hsl(var(--void)) 65%)" }}
     >
       <div className="flex flex-col items-center">
-        <div
-          className="relative grid h-[78px] w-[78px] place-items-center rounded-[20px] text-[38px] shadow-[0_10px_30px_-8px_rgba(0,0,0,.75)]"
-          style={{ background: ba.color }}
-        >
-          {ba.emoji}
-          <span className="absolute -bottom-1.5 -right-1.5 grid h-[30px] w-[30px] place-items-center rounded-full border-[3px] border-[hsl(var(--void))] bg-spice-500 text-white">
-            <Lock size={14} />
-          </span>
-        </div>
+        <AppLogo app={ba} size={78} locked />
         <h1 className="font-display mt-[22px] text-center text-[30px] font-semibold uppercase tracking-[0.03em]">
           {ba.name} is locked
         </h1>
