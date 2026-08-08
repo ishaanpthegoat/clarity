@@ -39,14 +39,17 @@ import {
 import { gradeProject } from "./grader";
 import { cheer, note, haptic } from "./feedback";
 import { simulateWrite } from "./optimistic";
+import type { UserProfile } from "./aiService";
+import { buildUserDigest, todayKey, type DailyDigest } from "./digest";
+import { apiSaveProfile } from "./api";
+import { orderedInterests } from "./personalize";
 
 export type ClarityView =
   | "splash"
-  | "intro"
+  | "onboarding"
   | "home"
   | "focus"
   | "blocked"
-  | "task"
   | "settings"
   | "projects"
   | "todos"
@@ -54,15 +57,13 @@ export type ClarityView =
   | "checkin"
   | "spring"
   | "paywall"
-  | "articles"
+  | "digest"
   | "insights"
   | "milestones"
   | "grade";
 
 export type SubmitStage = "camera" | "analyzing" | "result";
-export type ArticleStage = "read" | "record" | "analyzing" | "done";
 export type GradeStage = "intro" | "camera" | "grading" | "result";
-export type SoundscapeId = "none" | "wind" | "drone" | "rain";
 export type ThemeMode = "dark" | "light";
 
 export interface LockSchedule {
@@ -94,8 +95,6 @@ export interface ClarityState {
   activities: string[];
   checkinNote: string;
   locking: boolean;
-  task: string;
-  taskDraft: string;
   blockedApp: AppIcon | null;
 
   // ── focus session ──
@@ -114,7 +113,8 @@ export interface ClarityState {
   selProj: string[];
   todos: Todo[];
   todoDraft: string;
-  name: string;
+  /** Everything onboarding learned. `name` lives here now, not on its own. */
+  profile: UserProfile;
 
   // ── projects workspace ──
   /** The project whose detail sheet is open. */
@@ -136,12 +136,11 @@ export interface ClarityState {
   sessionMinutes: number;
   /** daily deep-work target, in minutes */
   goalMinutes: number;
-  soundscape: SoundscapeId;
   theme: ThemeMode;
   schedule: LockSchedule;
   strictDefault: boolean;
 
-  introSeen: boolean;
+  onboarded: boolean;
   isPro: boolean;
 
   // ── history ──
@@ -152,25 +151,34 @@ export interface ClarityState {
   /** day-keys the user spent a streak freeze on */
   freezeDays: string[];
 
-  // ── daily read ──
-  articleStage: ArticleStage;
-  currentArticleId: string | null;
-  articlesDone: string[];
+  // ── daily digest ──
+  digest: DailyDigest | null;
+  digestLoading: boolean;
+  /** Day-keys whose digest has been marked read. */
+  digestRead: string[];
 
   // ── transient UI ──
   paletteOpen: boolean;
 }
 
-const STORAGE_KEY = "clarity.state.v3";
-const LEGACY_KEY = "clarity.state.v2";
+const STORAGE_KEY = "clarity.state.v4";
+const LEGACY_KEY = "clarity.state.v3";
 
 type Persisted = Pick<
   ClarityState,
-  | "locking" | "task" | "apps" | "projects" | "selProj" | "todos" | "name"
-  | "sessionMinutes" | "goalMinutes" | "soundscape" | "theme" | "schedule" | "strictDefault"
-  | "introSeen" | "isPro" | "articlesDone" | "days" | "sessions"
+  | "locking" | "apps" | "projects" | "selProj" | "todos" | "profile"
+  | "sessionMinutes" | "goalMinutes" | "theme" | "schedule" | "strictDefault"
+  | "onboarded" | "isPro" | "digestRead" | "days" | "sessions"
   | "cheered" | "adopted" | "freezeDays"
 >;
+
+const EMPTY_PROFILE: UserProfile = {
+  name: "",
+  interests: [],
+  specifics: {},
+  goal: "",
+  avoid: "",
+};
 
 const DEFAULT_SCHEDULE: LockSchedule = {
   enabled: false,
@@ -211,6 +219,7 @@ function normalizeProjects(saved: unknown): Project[] {
       notes: raw.notes ?? "",
       grades: Array.isArray(raw.grades) ? raw.grades : [],
       adoptedFrom: raw.adoptedFrom,
+      dueDate: raw.dueDate,
     } satisfies Project;
   });
   return projects.length ? projects : SEED_PROJECTS;
@@ -258,8 +267,6 @@ function makeInitial(): ClarityState {
     activities: todayLog.checkin?.activities ?? [],
     checkinNote: todayLog.checkin?.note ?? "",
     locking: saved.locking ?? true,
-    task: saved.task ?? "",
-    taskDraft: saved.task ?? "",
     blockedApp: null,
 
     focusTotal: (saved.sessionMinutes ?? 25) * 60,
@@ -276,7 +283,7 @@ function makeInitial(): ClarityState {
     selProj: saved.selProj ?? [],
     todos,
     todoDraft: "",
-    name: saved.name ?? "",
+    profile: { ...EMPTY_PROFILE, ...(saved.profile ?? {}) },
 
     openProjectId: null,
     cheered: saved.cheered ?? [],
@@ -290,12 +297,11 @@ function makeInitial(): ClarityState {
 
     sessionMinutes: saved.sessionMinutes ?? 25,
     goalMinutes: saved.goalMinutes ?? 180,
-    soundscape: saved.soundscape ?? "none",
     theme: saved.theme ?? "dark",
     schedule: { ...DEFAULT_SCHEDULE, ...(saved.schedule ?? {}) },
     strictDefault: saved.strictDefault ?? false,
 
-    introSeen: saved.introSeen ?? false,
+    onboarded: saved.onboarded ?? false,
     isPro: saved.isPro ?? false,
 
     days: { ...days, [today]: todayLog },
@@ -303,9 +309,9 @@ function makeInitial(): ClarityState {
     viewDate: today,
     freezeDays: saved.freezeDays ?? [],
 
-    articleStage: "read",
-    currentArticleId: null,
-    articlesDone: saved.articlesDone ?? [],
+    digest: null,
+    digestLoading: false,
+    digestRead: saved.digestRead ?? [],
 
     paletteOpen: false,
   };
@@ -372,17 +378,15 @@ export interface ClarityActions {
   enterApp: () => void;
   toggleProject: (id: string) => void;
   confirmProjects: () => void;
-  finishIntro: () => void;
+  /** Onboarding chat is done — save what it learned and open the app. */
+  finishOnboarding: (profile: UserProfile) => void;
   goPaywall: () => void;
   subscribe: () => void;
   dismissPaywall: () => void;
 
-  // ── daily read ──
-  openArticles: () => void;
-  openArticle: (id: string) => void;
-  startArticleRecord: (id?: string) => void;
-  submitArticleVideo: () => void;
-  finishArticle: () => void;
+  // ── daily digest ──
+  openDigest: () => void;
+  markDigestRead: () => void;
 
   // ── projects workspace ──
   openProject: (id: string | null) => void;
@@ -390,6 +394,8 @@ export interface ClarityActions {
   setProjectStatus: (id: string, status: ProjectStatus) => void;
   setProjectProgress: (id: string, progress: number) => void;
   setProjectNotes: (id: string, notes: string) => void;
+  /** ISO day, or "" to clear the date. */
+  setProjectDueDate: (id: string, dueDate: string) => void;
   deleteProject: (id: string) => void;
   cheerIdea: (id: string) => void;
   adoptIdea: (id: string) => void;
@@ -406,15 +412,11 @@ export interface ClarityActions {
   addTodo: () => void;
   removeTodo: (id: string) => void;
   setTodoDraft: (v: string) => void;
-  setTaskDraft: (v: string) => void;
-  saveTask: () => void;
-  openTask: () => void;
 
   // preferences
-  setName: (v: string) => void;
+  setProfile: (patch: Partial<UserProfile>) => void;
   setSessionMinutes: (m: number) => void;
   setGoalMinutes: (m: number) => void;
-  setSoundscape: (s: SoundscapeId) => void;
   setTheme: (t: ThemeMode) => void;
   setSchedule: (patch: Partial<LockSchedule>) => void;
   setStrictDefault: (v: boolean) => void;
@@ -439,6 +441,10 @@ export interface ClarityDerived {
   freezeAvailable: boolean;
   /** screens that own the whole frame hide the tab bar */
   tabBarHidden: boolean;
+  /** today's digest has been read */
+  digestDone: boolean;
+  /** projects with a due date, soonest first */
+  upcoming: Project[];
 }
 
 interface ClarityContextValue {
@@ -451,7 +457,7 @@ const ClarityContext = createContext<ClarityContextValue | null>(null);
 
 /** Views that take the whole frame — no tab bar over them. */
 const FULLSCREEN_VIEWS: ClarityView[] = [
-  "splash", "intro", "focus", "blocked", "task", "spring", "paywall", "grade",
+  "splash", "onboarding", "focus", "blocked", "spring", "paywall", "grade",
 ];
 
 export function ClarityProvider({ children }: { children: ReactNode }) {
@@ -468,21 +474,19 @@ export function ClarityProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const persisted: Persisted = {
       locking: state.locking,
-      task: state.task,
       apps: state.apps,
       projects: state.projects,
       selProj: state.selProj,
       todos: state.todos,
-      name: state.name,
+      profile: state.profile,
       sessionMinutes: state.sessionMinutes,
       goalMinutes: state.goalMinutes,
-      soundscape: state.soundscape,
       theme: state.theme,
       schedule: state.schedule,
       strictDefault: state.strictDefault,
-      introSeen: state.introSeen,
+      onboarded: state.onboarded,
       isPro: state.isPro,
-      articlesDone: state.articlesDone,
+      digestRead: state.digestRead,
       days: state.days,
       sessions: state.sessions,
       cheered: state.cheered,
@@ -495,10 +499,10 @@ export function ClarityProvider({ children }: { children: ReactNode }) {
       /* quota / private mode — the app still works, it just forgets */
     }
   }, [
-    state.locking, state.task, state.apps, state.projects, state.selProj,
-    state.todos, state.name, state.sessionMinutes, state.goalMinutes,
-    state.soundscape, state.theme, state.schedule, state.strictDefault,
-    state.introSeen, state.isPro, state.articlesDone, state.days, state.sessions,
+    state.locking, state.apps, state.projects, state.selProj,
+    state.todos, state.profile, state.sessionMinutes, state.goalMinutes,
+    state.theme, state.schedule, state.strictDefault,
+    state.onboarded, state.isPro, state.digestRead, state.days, state.sessions,
     state.cheered, state.adopted, state.freezeDays,
   ]);
 
@@ -561,25 +565,50 @@ export function ClarityProvider({ children }: { children: ReactNode }) {
     };
   }, [state.submitStage, patch]);
 
-  // ── daily read: analyzing → done ──
-  const articleRef = useRef<number | null>(null);
+  // ── daily digest ──
+  // Built once per day. The heavy half (summarising each category) is cached by
+  // the digest module, so re-opening the tab is a read, not a regeneration.
   useEffect(() => {
-    if (state.articleStage !== "analyzing") return;
-    articleRef.current = window.setTimeout(() => {
-      setState((s) => ({
-        ...s,
-        articleStage: "done",
-        articlesDone:
-          s.currentArticleId && !s.articlesDone.includes(s.currentArticleId)
-            ? [...s.articlesDone, s.currentArticleId]
-            : s.articlesDone,
-      }));
-      cheer("Understanding logged", "That one's counted for the week.");
-    }, 2200);
+    if (state.view !== "digest") return;
+
+    // Stale on a new day, and also when the interests behind it change —
+    // editing them in Settings otherwise left yesterday's set on screen with
+    // no way to refresh short of reloading.
+    const wanted = orderedInterests(state.profile).join(",");
+    const built = state.digest?.entries.map((e) => e.category).join(",") ?? null;
+    const fresh = state.digest?.day === todayKey() && built === wanted;
+    if (fresh) return;
+    let alive = true;
+    setState((s) => ({ ...s, digestLoading: true }));
+
+    buildUserDigest(state.profile)
+      .then((digest) => {
+        if (alive) setState((s) => ({ ...s, digest, digestLoading: false }));
+      })
+      .catch(() => {
+        if (!alive) return;
+        setState((s) => ({ ...s, digestLoading: false }));
+        note("Digest unavailable", "Couldn't put today's together. Try again shortly.");
+      });
+
     return () => {
-      if (articleRef.current) window.clearTimeout(articleRef.current);
+      alive = false;
     };
-  }, [state.articleStage]);
+  }, [state.view, state.digest, state.profile]);
+
+  // ── profile → backend ──
+  // Debounced: Settings edits the profile on every keystroke, and each one
+  // would otherwise be its own request. Fire-and-forget — the local copy is
+  // authoritative for the UI, and a server that is down must not block typing.
+  const firstProfileSync = useRef(true);
+  useEffect(() => {
+    if (firstProfileSync.current) {
+      firstProfileSync.current = false;
+      return;
+    }
+    const id = window.setTimeout(() => void apiSaveProfile(state.profile), 800);
+    return () => window.clearTimeout(id);
+  }, [state.profile]);
 
   /** Close out the running session and write it to history. */
   const commitSession = useCallback(
@@ -588,12 +617,15 @@ export function ClarityProvider({ children }: { children: ReactNode }) {
       const focusedSeconds = Math.max(0, s.focusTotal - s.focusLeft);
       const key = dateKey();
       const day = getDay(s.days, key);
+      // A session belongs to whatever you picked for the week, now that there
+      // is no separate "today's task" to hang it on.
+      const activeProject = s.projects.find((p) => s.selProj.includes(p.id));
       const session: Session = {
         id: `s${s.sessionStartedAt}`,
         startedAt: s.sessionStartedAt,
         planned: Math.round(s.focusTotal / 60),
         focusedSeconds,
-        task: s.task,
+        task: activeProject?.title ?? "",
         completed,
         strict: s.strict,
         note: s.sessionNote.trim() || undefined,
@@ -758,9 +790,23 @@ export function ClarityProvider({ children }: { children: ReactNode }) {
 
       setSessionNote: (v) => patch({ sessionNote: v }),
 
-      enterApp: () => update((s) => ({ view: s.introSeen ? "home" : "intro" })),
-      finishIntro: () =>
-        update((s) => ({ view: s.isPro ? "home" : "paywall", introSeen: true })),
+      enterApp: () => update((s) => ({ view: s.onboarded ? "home" : "onboarding" })),
+
+      /**
+       * Straight to Home. The paywall used to sit here, which meant every
+       * fresh install was asked to buy before it had shown anything worth
+       * buying — it is now reachable only from Settings.
+       */
+      finishOnboarding: (profile) => {
+        // Fire-and-forget: a backend that is unreachable must not block anyone
+        // getting into the app. The local copy is written either way.
+        void apiSaveProfile(profile);
+        cheer(
+          profile.name ? `Good to meet you, ${profile.name}` : "You're set",
+          "Your digest is ready on the Digest tab.",
+        );
+        patch({ profile, onboarded: true, view: "home" });
+      },
 
       goPaywall: () => patch({ view: "paywall" }),
       subscribe: () => {
@@ -769,20 +815,15 @@ export function ClarityProvider({ children }: { children: ReactNode }) {
       },
       dismissPaywall: () => patch({ view: "home" }),
 
-      // ── daily read ──
-      // The Read tab always lands on something readable: `currentArticleId` is
-      // resolved by the screen, so opening the tab never shows an empty state.
-      openArticles: () => patch({ view: "articles", articleStage: "read" }),
-      openArticle: (id) => patch({ view: "articles", currentArticleId: id, articleStage: "read" }),
-      /** From Home's card straight into recording — the hand-off into the tab. */
-      startArticleRecord: (id) =>
-        update((s) => ({
-          view: "articles",
-          currentArticleId: id ?? s.currentArticleId,
-          articleStage: "record",
-        })),
-      submitArticleVideo: () => patch({ articleStage: "analyzing" }),
-      finishArticle: () => patch({ articleStage: "read" }),
+      // ── daily digest ──
+      openDigest: () => patch({ view: "digest" }),
+      markDigestRead: () =>
+        update((s) => {
+          const key = s.digest?.day ?? todayKey();
+          if (s.digestRead.includes(key)) return {};
+          cheer("Caught up", "That's the news handled in under two minutes.");
+          return { digestRead: [...s.digestRead, key] };
+        }),
 
       // ── projects workspace ──
       openProject: (id) => patch({ openProjectId: id }),
@@ -828,6 +869,13 @@ export function ClarityProvider({ children }: { children: ReactNode }) {
       setProjectNotes: (id, notes) =>
         update((s) => ({
           projects: s.projects.map((p) => (p.id === id ? { ...p, notes } : p)),
+        })),
+
+      setProjectDueDate: (id, dueDate) =>
+        update((s) => ({
+          projects: s.projects.map((p) =>
+            p.id === id ? { ...p, dueDate: dueDate || undefined } : p,
+          ),
         })),
 
       deleteProject: (id) =>
@@ -960,18 +1008,9 @@ export function ClarityProvider({ children }: { children: ReactNode }) {
         }),
 
       setTodoDraft: (v) => patch({ todoDraft: v }),
-      setTaskDraft: (v) => patch({ taskDraft: v }),
-      saveTask: () =>
-        update((s) => {
-          const task = s.taskDraft.trim();
-          if (!task) return { view: "home" };
-          note("Focus set", "Everything you lock away is protecting this.");
-          return { task, view: "home" };
-        }),
-      openTask: () => update((s) => ({ view: "task", taskDraft: s.task })),
 
       // ── preferences ──
-      setName: (v) => patch({ name: v }),
+      setProfile: (p) => update((s) => ({ profile: { ...s.profile, ...p } })),
       setSessionMinutes: (m) =>
         update((s) => {
           const mins = Math.max(
@@ -988,7 +1027,6 @@ export function ClarityProvider({ children }: { children: ReactNode }) {
         patch({
           goalMinutes: Math.max(GOAL_BOUNDS.min, Math.min(GOAL_BOUNDS.max, Math.round(m))),
         }),
-      setSoundscape: (s) => patch({ soundscape: s }),
       setTheme: (t) => patch({ theme: t }),
       setSchedule: (p) => update((s) => ({ schedule: { ...s.schedule, ...p } })),
       setStrictDefault: (v) => patch({ strictDefault: v }),
@@ -1012,7 +1050,7 @@ export function ClarityProvider({ children }: { children: ReactNode }) {
         } catch {
           /* nothing to clear */
         }
-        setState({ ...makeInitial(), view: "home", introSeen: true });
+        setState({ ...makeInitial(), view: "home", onboarded: true });
         note("Data cleared", "Your history is gone. Starting fresh.");
       },
 
@@ -1103,10 +1141,6 @@ export function ClarityProvider({ children }: { children: ReactNode }) {
     const today = getDay(state.days, dateKey());
     const viewedDay = getDay(state.days, state.viewDate);
     const frozen = new Set(state.freezeDays);
-    // Recording is a full-attention moment — the tab bar would only offer a
-    // way to lose the take.
-    const readingBusy =
-      state.view === "articles" && state.articleStage !== "read";
     return {
       today,
       viewedDay,
@@ -1115,11 +1149,15 @@ export function ClarityProvider({ children }: { children: ReactNode }) {
       scheduleOn: scheduleActive(state.schedule),
       openProject: state.projects.find((p) => p.id === state.openProjectId) ?? null,
       freezeAvailable: freezeAvailableFrom(state.freezeDays),
-      tabBarHidden: FULLSCREEN_VIEWS.includes(state.view) || readingBusy,
+      tabBarHidden: FULLSCREEN_VIEWS.includes(state.view),
+      digestDone: state.digestRead.includes(todayKey()),
+      upcoming: state.projects
+        .filter((p) => p.dueDate && p.status !== "done")
+        .sort((a, b) => (a.dueDate ?? "").localeCompare(b.dueDate ?? "")),
     };
   }, [
     state.days, state.viewDate, state.goalMinutes, state.schedule, state.freezeDays,
-    state.projects, state.openProjectId, state.view, state.articleStage,
+    state.projects, state.openProjectId, state.view, state.digestRead,
   ]);
 
   const value = useMemo(() => ({ state, actions, derived }), [state, actions, derived]);

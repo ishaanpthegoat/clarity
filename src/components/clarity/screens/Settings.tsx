@@ -1,20 +1,24 @@
-﻿// Clarity — Settings. Every row here changes something; nothing is display-only.
+// Clarity — Settings. Every row here changes something; nothing is display-only.
+//
+// This screen used to carry two duration sliders, an ambient-sound picker, a
+// name field and a theme switch under a "You" heading. The sliders moved to
+// Home (they are tuned far too often to live three taps deep), the sound went
+// entirely, and "You" went with it — your name comes from onboarding now, and
+// there is nothing else about you worth a settings row.
+//
+// What is left is genuinely settings: what you follow, how locking behaves,
+// which apps it applies to, and your data.
 import { useState } from "react";
-import { useClarity, GOAL_BOUNDS, SESSION_BOUNDS } from "@/lib/clarityStore";
-import { SOUNDSCAPES } from "@/lib/soundscape";
+import { useClarity } from "@/lib/clarityStore";
 import { APP_CATALOG } from "@/lib/clarityData";
+import { INTEREST_CATEGORIES } from "@/lib/feeds";
 import ClaritySwitch from "../ClaritySwitch";
 import AppLogo from "../AppLogo";
-import DurationSlider from "../DurationSlider";
 import { IconAction, Tip } from "../Action";
-import { ChevronLeft, Sun, MoonIcon, Trash, Plus, X } from "../icons";
+import { ChevronLeft, Sun, MoonIcon, Trash, Plus, X, Check } from "../icons";
 
 const DAY_LETTERS = ["S", "M", "T", "W", "T", "F", "S"];
-/** Marks under the session track. Deliberately sparse — the readout is exact. */
-const SESSION_TICKS = [5, 60, 180, 300, 420];
-const SESSION_PRESETS = [15, 25, 50, 90, 180];
-const GOAL_TICKS = [10, 180, 360, 540, 720];
-const GOAL_PRESETS = [60, 120, 180, 300, 480];
+const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 function Row({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
@@ -41,6 +45,8 @@ export default function Settings() {
   const { state, actions } = useClarity();
   const [confirmReset, setConfirmReset] = useState(false);
 
+  const { interests } = state.profile;
+
   return (
     <div className="anim-slideUp clarity-scroll absolute inset-0 flex flex-col overflow-y-auto bg-background px-[22px] pb-[118px] pt-[calc(78px_+_var(--safe-t))]">
       <div className="mb-6 flex items-center gap-3">
@@ -53,7 +59,7 @@ export default function Settings() {
         <h1 className="font-display text-[32px] font-semibold uppercase tracking-[0.03em]">Settings</h1>
       </div>
 
-      {/* Pro banner */}
+      {/* The only route to the paywall. It no longer interrupts anyone on open. */}
       <button
         onClick={state.isPro ? undefined : actions.goPaywall}
         className={`sietch-card-warm mb-6 flex w-full items-center gap-3.5 p-4 text-left ${state.isPro ? "" : "card-lift"}`}
@@ -72,77 +78,131 @@ export default function Settings() {
         {!state.isPro && <span className="text-spice-300">→</span>}
       </button>
 
-      <Section title="You">
-        <Row label="Your name" hint="Used on the home screen">
+      {/* Everything onboarding learned, and the only place to change it.
+          Deliberately *not* a "You" section — none of this is profile trivia,
+          it is the input that decides what the digest contains and what the
+          block screen says back to you. Leaving it uneditable would have made
+          a two-minute conversation permanent. */}
+      <div className="eyebrow eyebrow-muted mb-2.5 ml-1">What Clarity knows</div>
+      <div className="sietch-card mb-6 divide-y divide-[hsl(var(--sand-line))] px-[18px]">
+        <Row label="Your name" hint="Used when Clarity talks to you">
           <input
-            value={state.name}
-            onChange={(e) => actions.setName(e.target.value)}
+            value={state.profile.name}
+            onChange={(e) => actions.setProfile({ name: e.target.value })}
             placeholder="Add your name"
             aria-label="Your name"
-            name="name"
-            autoComplete="given-name"
-            spellCheck={false}
             maxLength={40}
+            spellCheck={false}
             className="h-11 w-[130px] rounded-[10px] border border-sand-line raise px-3 text-right text-[14px] text-foreground outline-none placeholder:text-muted-foreground focus:border-spice-400/50"
           />
         </Row>
-        <Row label="Appearance" hint={state.theme === "dark" ? "Night on the sand" : "Midday glare"}>
-          <div className="flex gap-1.5">
-            <button
-              onClick={() => actions.setTheme("dark")}
-              className={`grid h-11 w-11 place-items-center rounded-[10px] ${
-                state.theme === "dark"
-                  ? "bg-spice-400/16 text-spice-200 border border-spice-400/40"
-                  : "border border-sand-line text-muted-foreground"
-              }`}
-              aria-label="Dark theme"
-              aria-pressed={state.theme === "dark"}
-            >
-              <MoonIcon size={16} />
-            </button>
-            <button
-              onClick={() => actions.setTheme("light")}
-              className={`grid h-11 w-11 place-items-center rounded-[10px] ${
-                state.theme === "light"
-                  ? "bg-spice-400/16 text-spice-200 border border-spice-400/40"
-                  : "border border-sand-line text-muted-foreground"
-              }`}
-              aria-label="Light theme"
-              aria-pressed={state.theme === "light"}
-            >
-              <Sun size={16} />
-            </button>
+
+        <div className="py-4">
+          <label htmlFor="set-goal" className="text-[15.5px] font-semibold">
+            What you&rsquo;re trying to get to
+          </label>
+          <div className="mt-0.5 text-[13px] leading-[1.35] text-muted-foreground">
+            Shown back to you at the moment you reach for a locked app
           </div>
-        </Row>
-      </Section>
+          <input
+            id="set-goal"
+            value={state.profile.goal}
+            onChange={(e) => actions.setProfile({ goal: e.target.value })}
+            placeholder="e.g. finally learn to cook properly"
+            maxLength={140}
+            className="mt-2.5 h-11 w-full rounded-[10px] border border-sand-line raise px-3 text-[14.5px] text-foreground outline-none placeholder:text-muted-foreground focus:border-spice-400/50"
+          />
+        </div>
+
+        <div className="py-4">
+          <div className="text-[15.5px] font-semibold">What you follow</div>
+          <div className="mt-0.5 text-[13px] leading-[1.35] text-muted-foreground">
+            Turning one off stops it appearing tomorrow
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {INTEREST_CATEGORIES.map((c) => {
+              const on = interests.includes(c.id);
+              return (
+                <Tip key={c.id} label={on ? `Stop following ${c.label}` : c.blurb}>
+                  <button
+                    onClick={() =>
+                      actions.setProfile({
+                        interests: on
+                          ? interests.filter((x) => x !== c.id)
+                          : [...interests, c.id],
+                      })
+                    }
+                    aria-pressed={on}
+                    className="flex min-h-[44px] items-center gap-2 rounded-[13px] px-3.5 text-[14px] font-semibold transition-colors"
+                    style={{
+                      border: `1px solid ${on ? "hsl(var(--spice-400) / 0.45)" : "hsl(var(--sand-line))"}`,
+                      background: on ? "hsl(var(--spice-400) / 0.13)" : "transparent",
+                      color: on ? "hsl(var(--spice-100))" : "hsl(var(--muted-foreground))",
+                    }}
+                  >
+                    {c.label}
+                    {on && <Check size={13} />}
+                  </button>
+                </Tip>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* One field per followed category — this is what pulls a story to the
+            top of the digest rather than leaving it in the pile. */}
+        {interests.length > 0 && (
+          <div className="py-4">
+            <div className="text-[15.5px] font-semibold">Specifically</div>
+            <div className="mt-0.5 text-[13px] leading-[1.35] text-muted-foreground">
+              Anything matching these gets pulled to the top of your digest
+            </div>
+            <div className="mt-3 flex flex-col gap-2.5">
+              {interests.map((id) => (
+                <div key={id} className="flex items-center gap-2.5">
+                  <label
+                    htmlFor={`spec-${id}`}
+                    className="w-[74px] flex-none text-[13px] font-semibold text-muted-foreground"
+                  >
+                    {INTEREST_CATEGORIES.find((c) => c.id === id)?.label ?? id}
+                  </label>
+                  <input
+                    id={`spec-${id}`}
+                    value={state.profile.specifics[id] ?? ""}
+                    onChange={(e) =>
+                      actions.setProfile({
+                        specifics: { ...state.profile.specifics, [id]: e.target.value },
+                      })
+                    }
+                    placeholder="A team, a company, a topic"
+                    maxLength={120}
+                    className="h-11 flex-1 rounded-[10px] border border-sand-line raise px-3 text-[14px] text-foreground outline-none placeholder:text-muted-foreground focus:border-spice-400/50"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="py-4">
+          <label htmlFor="set-avoid" className="text-[15.5px] font-semibold">
+            Less of
+          </label>
+          <div className="mt-0.5 text-[13px] leading-[1.35] text-muted-foreground">
+            Stories matching this are hidden, and the digest says how many
+          </div>
+          <input
+            id="set-avoid"
+            value={state.profile.avoid}
+            onChange={(e) => actions.setProfile({ avoid: e.target.value })}
+            placeholder="e.g. politics"
+            maxLength={120}
+            className="mt-2.5 h-11 w-full rounded-[10px] border border-sand-line raise px-3 text-[14.5px] text-foreground outline-none placeholder:text-muted-foreground focus:border-spice-400/50"
+          />
+        </div>
+      </div>
 
       <Section title="Focus">
-        {/* Sliders, not preset chips — the old four buttons capped a session at
-            90 minutes, which is shorter than plenty of real deep work. */}
-        <DurationSlider
-          id="session-length"
-          label="Session length"
-          hint="How long a new focus session runs. Drag all the way for a seven-hour block."
-          value={state.sessionMinutes}
-          onChange={actions.setSessionMinutes}
-          min={SESSION_BOUNDS.min}
-          max={SESSION_BOUNDS.max}
-          step={SESSION_BOUNDS.step}
-          ticks={SESSION_TICKS}
-          presets={SESSION_PRESETS}
-        />
-        <DurationSlider
-          id="daily-goal"
-          label="Daily goal"
-          hint="Deep work you're aiming for each day. Moves in ten-minute steps."
-          value={state.goalMinutes}
-          onChange={actions.setGoalMinutes}
-          min={GOAL_BOUNDS.min}
-          max={GOAL_BOUNDS.max}
-          step={GOAL_BOUNDS.step}
-          ticks={GOAL_TICKS}
-          presets={GOAL_PRESETS}
-        />
         <Row
           label="Commit Mode by default"
           hint="No pause and no early exit, unless you confirm it"
@@ -153,19 +213,13 @@ export default function Settings() {
             aria-label="Commit Mode by default"
           />
         </Row>
-        <Row label="Ambient sound" hint={SOUNDSCAPES.find((s) => s.id === state.soundscape)?.detail}>
-          <select
-            value={state.soundscape}
-            onChange={(e) => actions.setSoundscape(e.target.value as typeof state.soundscape)}
-            aria-label="Ambient sound"
-            className="h-11 rounded-[10px] border border-sand-line raise px-3 text-[14px] text-foreground outline-none focus:border-spice-400/50"
+        <Row label="Session length and daily goal" hint="Both live on the home screen now">
+          <button
+            onClick={() => actions.go("home")}
+            className="h-11 rounded-[10px] border border-sand-line px-4 text-[13.5px] font-semibold text-foreground/85 transition-colors hover:text-foreground"
           >
-            {SOUNDSCAPES.map((s) => (
-              <option key={s.id} value={s.id} className="bg-[hsl(var(--popover))]">
-                {s.name}
-              </option>
-            ))}
-          </select>
+            Open
+          </button>
         </Row>
       </Section>
 
@@ -213,7 +267,7 @@ export default function Settings() {
                       })
                     }
                     aria-pressed={on}
-                    aria-label={["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][i]}
+                    aria-label={DAY_NAMES[i]}
                     className="h-9 flex-1 rounded-[10px] text-[13px] font-bold transition-colors"
                     style={{
                       background: on ? "hsl(var(--spice-400) / 0.16)" : "transparent",
@@ -279,6 +333,37 @@ export default function Settings() {
         )}
       </Section>
 
+      <Section title="Display">
+        <Row label="Appearance" hint={state.theme === "dark" ? "Night on the sand" : "Midday glare"}>
+          <div className="flex gap-1.5">
+            <button
+              onClick={() => actions.setTheme("dark")}
+              className={`grid h-11 w-11 place-items-center rounded-[10px] ${
+                state.theme === "dark"
+                  ? "bg-spice-400/16 text-spice-200 border border-spice-400/40"
+                  : "border border-sand-line text-muted-foreground"
+              }`}
+              aria-label="Dark theme"
+              aria-pressed={state.theme === "dark"}
+            >
+              <MoonIcon size={16} />
+            </button>
+            <button
+              onClick={() => actions.setTheme("light")}
+              className={`grid h-11 w-11 place-items-center rounded-[10px] ${
+                state.theme === "light"
+                  ? "bg-spice-400/16 text-spice-200 border border-spice-400/40"
+                  : "border border-sand-line text-muted-foreground"
+              }`}
+              aria-label="Light theme"
+              aria-pressed={state.theme === "light"}
+            >
+              <Sun size={16} />
+            </button>
+          </div>
+        </Row>
+      </Section>
+
       <Section title="Your data">
         <Row label="Export history" hint="Every session, day and project, as JSON">
           <Tip label="Download your whole history as a JSON file">
@@ -301,6 +386,12 @@ export default function Settings() {
           </Tip>
         </Row>
       </Section>
+
+      {/* Honest about where it lives. Everything here is on this device only —
+          nothing is uploaded, because there is no server to upload it to. */}
+      <p className="mb-6 px-1 text-[12.5px] leading-[1.5] text-muted-foreground">
+        Your history is stored on this device and never leaves it.
+      </p>
 
       {confirmReset && (
         <div className="anim-fadeIn mb-6 rounded-[18px] border border-destructive/35 bg-destructive/[0.07] p-4 text-center">

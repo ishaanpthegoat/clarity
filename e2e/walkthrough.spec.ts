@@ -1,3 +1,11 @@
+// Clarity — a screenshot walk of every screen, plus the touch-target audit.
+//
+// Two jobs. The walk exists to catch anything that throws or renders blank on a
+// screen nobody happened to open by hand; the audit exists because a control
+// under 44px is one you miss on a phone, and that is invisible in code review.
+//
+// Behavioural coverage of the new flow lives in `digest.spec.ts` — this file is
+// deliberately broad and shallow so it stays cheap to keep true.
 import { test, expect, type Page } from "@playwright/test";
 import fs from "node:fs";
 import path from "node:path";
@@ -5,7 +13,7 @@ import path from "node:path";
 const SHOTS = path.join(process.cwd(), "e2e", "shots");
 fs.mkdirSync(SHOTS, { recursive: true });
 
-const STORAGE_KEY = "clarity.state.v2";
+const STORAGE_KEY = "clarity.state.v4";
 
 function dateKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -45,24 +53,32 @@ function seed() {
 
   return {
     locking: true,
-    task: "Finish the Q3 deck",
-    name: "Ishaan",
+    // The name lives on the profile now, and `onboarded` is what skips the
+    // conversation — there is no `task`, `soundscape` or `introSeen` any more.
+    profile: {
+      name: "Ishaan",
+      interests: ["tech", "sports"],
+      specifics: { tech: "AI research" },
+      goal: "ship a side project",
+      avoid: "",
+    },
+    onboarded: true,
     sessionMinutes: 25,
     goalMinutes: 180,
-    soundscape: "wind",
     theme: "dark",
     schedule: { enabled: false, start: "09:00", end: "12:00", days: [1, 2, 3, 4, 5] },
     strictDefault: false,
-    introSeen: true,
     isPro: true,
-    articlesDone: [],
+    digestRead: [],
     days,
     sessions,
+    // Only `id` and `locked` are read back — everything visual comes from the
+    // catalogue, so this stays short on purpose.
     apps: [
-      { id: "ig", name: "Instagram", emoji: "📸", color: "linear-gradient(135deg,#feda75,#fa7e1e,#d62976,#962fbf)", locked: true },
-      { id: "tt", name: "TikTok", emoji: "🎵", color: "#0b0b0f", locked: true },
-      { id: "yt", name: "YouTube", emoji: "▶️", color: "#ff0000", locked: true },
-      { id: "sc", name: "Snapchat", emoji: "👻", color: "#FFFC00", locked: true },
+      { id: "ig", locked: true },
+      { id: "tt", locked: true },
+      { id: "yt", locked: true },
+      { id: "sc", locked: true },
     ],
     todos: [
       { id: "s1", text: "Outline the Q3 deck", done: true },
@@ -90,7 +106,7 @@ async function open(page: Page) {
   // Splash auto-advances after 2.9s; click through it rather than waiting.
   await page.waitForTimeout(300);
   await page.mouse.click(640, 400);
-  await page.waitForTimeout(900);
+  await expect(page.locator('nav[aria-label="Main"]')).toBeVisible({ timeout: 15_000 });
 }
 
 async function shot(page: Page, name: string) {
@@ -117,7 +133,11 @@ test("walk every screen", async ({ page }) => {
   await tab("Projects").click();
   await shot(page, "05-projects");
 
-  await tab("Check-in").click();
+  // Check-in lost its tab — it is a Home card now, reachable by shortcut so
+  // this doesn't depend on what time the suite runs.
+  await tab("Home").click();
+  await page.keyboard.press("c");
+  await expect(page.getByRole("heading", { name: /Evening check-in/i })).toBeVisible();
   await shot(page, "06-checkin");
 
   await tab("Home").click();
@@ -129,35 +149,39 @@ test("walk every screen", async ({ page }) => {
   await page.getByRole("button", { name: /Start a .* session/ }).click();
   await shot(page, "08-focus");
 
-  // Block screen, then the breath gate
+  // Block screen. The breathing gate that used to sit behind "Open it anyway"
+  // is gone — the third button now dismisses directly.
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Open Instagram" }).click();
+  await expect(page.getByRole("heading", { name: /Instagram is locked/i })).toBeVisible();
   await shot(page, "09-block");
-  await page.getByRole("button", { name: "Open it anyway" }).click();
-  await shot(page, "10-breath-gate");
 
   // Springboard
   await page.getByRole("button", { name: /back to work/i }).first().click();
   await page.getByRole("button", { name: /Open your home screen/ }).click();
-  await shot(page, "11-springboard");
+  await shot(page, "10-springboard");
 
-  // Daily read — its own tab now, and it opens on today's article.
+  // The digest — its own tab, built for whatever the profile follows.
   await page.getByRole("button", { name: "Open Clarity" }).click();
-  await tab("Read").click();
-  await shot(page, "12-articles");
+  await tab("Digest").click();
+  await expect(page.locator("section[aria-labelledby^='digest-']").first()).toBeVisible({
+    timeout: 20_000,
+  });
+  await shot(page, "11-digest");
 
   // Command palette
   await page.keyboard.press("Escape");
   await page.keyboard.press("Control+k");
-  await shot(page, "13-palette");
+  await shot(page, "12-palette");
   await page.keyboard.press("Escape");
 
   // Light theme
+  await tab("Home").click();
   await page.getByRole("button", { name: /^Settings —/ }).click();
   await page.getByRole("button", { name: "Light theme" }).click();
-  await shot(page, "14-settings-light");
+  await shot(page, "13-settings-light");
   await page.getByRole("button", { name: /^Back —/ }).click();
-  await shot(page, "15-home-light");
+  await shot(page, "14-home-light");
 
   expect(errors, `console errors:\n${errors.join("\n")}`).toEqual([]);
 });
@@ -171,23 +195,30 @@ test("walk every screen", async ({ page }) => {
 test("every control meets the 44px touch target floor", async ({ page }) => {
   await open(page);
 
+  const nav = (name: string) =>
+    page.getByRole("navigation", { name: "Main" }).getByRole("button", { name, exact: true });
+
   const screens: [string, () => Promise<void>][] = [
     ["home", async () => {}],
     ["insights", async () => {
-      await page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "Insights", exact: true }).click();
+      await nav("Insights").click();
     }],
     ["todos", async () => {
-      await page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "To-do", exact: true }).click();
+      await nav("To-do").click();
     }],
-    ["read", async () => {
-      await page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "Read", exact: true }).click();
+    ["digest", async () => {
+      await nav("Digest").click();
+      // The digest has to finish building, or its skeleton is measured instead.
+      await expect(page.locator("section[aria-labelledby^='digest-']").first()).toBeVisible({
+        timeout: 20_000,
+      });
     }],
     ["projects", async () => {
-      await page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "Projects", exact: true }).click();
+      await nav("Projects").click();
       await page.waitForTimeout(900); // the ideas feed has to arrive
     }],
     ["settings", async () => {
-      await page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "Home", exact: true }).click();
+      await nav("Home").click();
       await page.getByRole("button", { name: /^Settings —/ }).click();
     }],
   ];

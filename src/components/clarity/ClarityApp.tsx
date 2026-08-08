@@ -6,11 +6,10 @@ import StatusBar from "./StatusBar";
 import TabBar from "./TabBar";
 import CommandPalette from "./CommandPalette";
 import Splash from "./screens/Splash";
-import Intro from "./screens/Intro";
+import Onboarding from "./screens/Onboarding";
 import Home from "./screens/Home";
 import Focus from "./screens/Focus";
 import Block from "./screens/Block";
-import SetTask from "./screens/SetTask";
 import Settings from "./screens/Settings";
 import Projects from "./screens/Projects";
 import Todos from "./screens/Todos";
@@ -18,7 +17,7 @@ import Review from "./screens/Review";
 import Checkin from "./screens/Checkin";
 import Springboard from "./screens/Springboard";
 import Paywall from "./screens/Paywall";
-import Articles from "./screens/Articles";
+import Digest from "./screens/Digest";
 import Insights from "./screens/Insights";
 import Milestones from "./screens/Milestones";
 import ProjectGrade from "./screens/ProjectGrade";
@@ -27,11 +26,10 @@ function Screens() {
   const { state } = useClarity();
   switch (state.view) {
     case "splash": return <Splash />;
-    case "intro": return <Intro />;
+    case "onboarding": return <Onboarding />;
     case "home": return <Home />;
     case "focus": return <Focus />;
     case "blocked": return <Block />;
-    case "task": return <SetTask />;
     case "settings": return <Settings />;
     case "projects": return <Projects />;
     case "todos": return <Todos />;
@@ -39,7 +37,7 @@ function Screens() {
     case "checkin": return <Checkin />;
     case "spring": return <Springboard />;
     case "paywall": return <Paywall />;
-    case "articles": return <Articles />;
+    case "digest": return <Digest />;
     case "insights": return <Insights />;
     case "milestones": return <Milestones />;
     case "grade": return <ProjectGrade />;
@@ -56,14 +54,15 @@ function useShortcuts() {
       const el = e.target as HTMLElement | null;
       if (el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))) return;
       if (state.paletteOpen) return;
-      if (state.view === "splash" || state.view === "intro") return;
+      if (state.view === "splash" || state.view === "onboarding") return;
 
       switch (e.key.toLowerCase()) {
         case "h": actions.go("home"); break;
         case "f": actions.startFocus(); break;
+        case "c": actions.go("checkin"); break;
         case "l": actions.toggleLock(); break;
         case "i": actions.go("insights"); break;
-        case "r": actions.go("articles"); break;
+        case "r": actions.go("digest"); break;
         case "p": actions.go("projects"); break;
         case ",": actions.go("settings"); break;
         case "escape": if (state.view !== "home") actions.go("home"); break;

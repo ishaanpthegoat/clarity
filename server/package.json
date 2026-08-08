@@ -1,0 +1,24 @@
+{
+  "name": "clarity-server",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Clarity's backend: the daily RSS job, the Claude calls, and server-side profiles.",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "job": "tsx src/runJob.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.68.0",
+    "@hono/node-server": "^1.13.7",
+    "hono": "^4.6.14",
+    "rss-parser": "^3.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.16.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5.8.3"
+  }
+}

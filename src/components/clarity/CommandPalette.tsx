@@ -53,7 +53,7 @@ export default function CommandPalette() {
     { label: "Milestones", hint: "What you've earned", run: go("milestones"), keywords: "achievements badges" },
     { label: "Projects", run: go("projects") },
     { label: "To-do", run: go("todos") },
-    { label: "Daily read", run: run(actions.openArticles), keywords: "article reading" },
+    { label: "Daily digest", run: run(actions.openDigest), keywords: "news read digest" },
     { label: "Evening check-in", run: go("checkin"), keywords: "mood reflection" },
     { label: "Home screen", hint: "See your locked apps", run: go("spring"), keywords: "springboard" },
     { label: "Settings", shortcut: ",", run: go("settings") },
@@ -72,7 +72,6 @@ export default function CommandPalette() {
       run: run(() => actions.startFocus({ strict: true })),
       keywords: "strict hard lock",
     },
-    { label: "Change today's focus", run: run(actions.openTask), keywords: "task one thing" },
     {
       label: state.locking ? "Turn locking off" : "Turn locking on",
       shortcut: "L",

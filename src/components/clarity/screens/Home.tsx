@@ -1,11 +1,15 @@
 ﻿// Clarity — Home. Collapsing header, the day's ring, and the cards that make up
 // a day. Every number on this screen comes out of the logged history.
 import { useRef } from "react";
-import { useClarity } from "@/lib/clarityStore";
-import { QUOTES, todaysArticle } from "@/lib/clarityData";
+import { useClarity, GOAL_BOUNDS, SESSION_BOUNDS } from "@/lib/clarityStore";
+import { QUOTES } from "@/lib/clarityData";
+import { categoryLabel } from "@/lib/feeds";
+import { greet, goalPhrase } from "@/lib/personalize";
 import {
   dateKey,
+  daysUntil,
   formatDayLabel,
+  formatDue,
   formatDuration,
   isToday,
   lastSevenDays,
@@ -16,18 +20,12 @@ import RingHero from "../RingHero";
 import WeekChart from "../WeekChart";
 import ClaritySwitch from "../ClaritySwitch";
 import AppLogo from "../AppLogo";
+import DurationSlider from "../DurationSlider";
 import { IconAction, Tip } from "../Action";
 import {
-  ChevronLeft, ChevronRight, Gear, ArrowUpRight, Check, Flame, Shield, Search, Snowflake,
+  ChevronLeft, ChevronRight, Gear, ArrowUpRight, Check, Flame, Shield, Search,
+  Snowflake, MoonIcon,
 } from "../icons";
-
-function greeting(): string {
-  const h = new Date().getHours();
-  if (h < 5) return "Still up";
-  if (h < 12) return "Good morning";
-  if (h < 18) return "Good afternoon";
-  return "Good evening";
-}
 
 export default function Home() {
   const { state, actions, derived } = useClarity();
@@ -41,8 +39,9 @@ export default function Home() {
   const viewingToday = isToday(state.viewDate);
   const day = derived.viewedDay;
 
-  const todayArticle = todaysArticle();
-  const readDone = state.articlesDone.includes(todayArticle.id);
+  const checkedIn = !!derived.today.checkin;
+  const evening = new Date().getHours() >= 17;
+  const goal = state.profile.goal ? goalPhrase(state.profile.goal) : null;
 
   const week = totalsFor(state.days, lastSevenDays());
   const delta = weekOverWeekDelta(state.days);
@@ -139,9 +138,10 @@ export default function Home() {
 
         <div className="relative mt-4 h-[50px]">
           <div ref={greetRef} className="absolute left-0 top-0 max-w-[240px]">
-            <div className="text-[13px] font-medium text-muted-foreground">{greeting()}</div>
+            {/* Name is rendered beneath, so the greeting is asked for without one. */}
+            <div className="text-[13px] font-medium text-muted-foreground">{greet("")}</div>
             <h1 className="truncate text-[26px] font-extrabold leading-[1.1] tracking-[-0.02em]">
-              {state.name || "Welcome"}
+              {state.profile.name || "Welcome"}
             </h1>
           </div>
           <div ref={compactRef} className="absolute left-0 top-[10px] flex items-center gap-2.5 opacity-0">
@@ -182,37 +182,39 @@ export default function Home() {
           </div>
         )}
 
-        {/* today's task */}
-        <div className="anim-cardUp sietch-card card-lift mb-3.5 p-5" style={{ animationDelay: ".05s" }}>
-          <div className="mb-3 flex items-center justify-between">
-            <span className="eyebrow">Today&rsquo;s focus</span>
-            <button
-              onClick={actions.openTask}
-              className="-my-3.5 -mr-2 px-2 py-3.5 text-[12.5px] font-semibold text-muted-foreground transition-colors hover:text-foreground"
-            >
-              {state.task ? "Change" : "Set it"}
-            </button>
+        {/* today's digest — the thing that replaces the scroll */}
+        <button
+          onClick={actions.openDigest}
+          className="anim-cardUp sietch-card card-lift mb-3.5 w-full p-5 text-left"
+          style={{ animationDelay: ".05s" }}
+        >
+          <div className="mb-2 flex items-center justify-between">
+            <span className="eyebrow">Today&rsquo;s digest</span>
+            {derived.digestDone ? (
+              <span className="flex items-center gap-1 text-[12px] font-semibold text-spice-200">
+                <Check size={12} /> Read
+              </span>
+            ) : (
+              <span className="text-[12px] text-muted-foreground">
+                {state.digest ? `${state.digest.readMins} min` : "Under 2 min"}
+              </span>
+            )}
           </div>
-          {state.task ? (
-            <>
-              <div className="line-clamp-3 break-words text-[22px] font-bold leading-[1.25] tracking-[-0.015em]">
-                {state.task}
-              </div>
-              <div className="mt-2 text-[14px] leading-[1.45] text-muted-foreground">
-                One clear block. That is the whole ask for today.
-              </div>
-            </>
-          ) : (
-            <button onClick={actions.openTask} className="w-full text-left">
-              <div className="text-[19px] font-bold leading-[1.3] text-muted-foreground">
-                Name the one thing.
-              </div>
-              <div className="mt-2 flex items-center gap-1.5 text-[13.5px] font-semibold text-spice-400">
-                Pick your focus <ArrowUpRight size={13} />
-              </div>
-            </button>
-          )}
-        </div>
+          <div className="text-[19px] font-bold leading-[1.3] tracking-[-0.01em]">
+            {derived.digestDone
+              ? "You're caught up for today."
+              : "Everything you follow, in one read."}
+          </div>
+          <div className="mt-2 text-[14px] leading-[1.45] text-muted-foreground">
+            {state.profile.interests.length
+              ? state.profile.interests.map(categoryLabel).join(" · ")
+              : "Pick what you follow to start getting a digest."}
+          </div>
+          <div className="mt-3 flex items-center gap-1.5 text-[13px] font-semibold text-spice-400">
+            {derived.digestDone ? "Read it again" : "Read today's"}
+            <ArrowUpRight size={13} />
+          </div>
+        </button>
 
         {/* held the line — the app's own scoreboard for the thing it exists to do */}
         <div className="anim-cardUp mb-3.5 grid grid-cols-3 gap-2.5" style={{ animationDelay: ".07s" }}>
@@ -274,50 +276,61 @@ export default function Home() {
           <div className="mt-3 text-[12.5px] font-medium text-muted-foreground">{quote.author}</div>
         </button>
 
-        {/* today's read — stays on the front page, and hands off to the Read tab */}
-        <div className="anim-cardUp sietch-card mb-3.5 overflow-hidden" style={{ animationDelay: ".085s" }}>
-          <Tip label="Open today's read in the Read tab">
-            <button
-              onClick={() => actions.openArticle(todayArticle.id)}
-              className="w-full p-5 text-left"
-              aria-label={`Read today's article: ${todayArticle.title}`}
-            >
-              <div className="mb-2 flex items-center justify-between">
-                <span className="eyebrow">Today&rsquo;s read · {todayArticle.category}</span>
-                {readDone ? (
-                  <span className="flex items-center gap-1 text-[12px] font-semibold text-spice-200">
-                    <Check size={12} /> Done
-                  </span>
-                ) : (
-                  <span className="text-[12px] text-muted-foreground">{todayArticle.readMins} min</span>
-                )}
-              </div>
-              <div className="text-[19px] font-bold leading-[1.25] tracking-[-0.01em]">
-                {todayArticle.title}
-              </div>
-              <div className="mt-2 text-[14px] leading-[1.45] text-muted-foreground">
-                {todayArticle.excerpt}
-              </div>
-              <div className="mt-3 flex items-center gap-1.5 text-[13px] font-semibold text-spice-400">
-                {readDone ? "Read it again" : "Read it"}
-                <ArrowUpRight size={13} />
-              </div>
-            </button>
-          </Tip>
-
-          {!readDone && (
-            <Tip label="Skip straight to recording — this opens the Read tab with the camera ready">
-              <button
-                onClick={() => actions.startArticleRecord(todayArticle.id)}
-                className="flex w-full items-center justify-center gap-1.5 border-t border-sand-line px-5 py-3.5 text-[13px] font-semibold text-spice-400"
-                aria-label="Record your understanding of today's read"
-              >
-                Record my understanding
-                <ArrowUpRight size={13} />
-              </button>
-            </Tip>
-          )}
+        {/* session dials — these used to be two screens deep in Settings, which
+            is the wrong place for the two numbers people retune most often */}
+        <div className="anim-cardUp sietch-card mb-3.5 px-[18px]" style={{ animationDelay: ".085s" }}>
+          <DurationSlider
+            id="home-session"
+            label="Session length"
+            hint="How long a new focus session runs"
+            value={state.sessionMinutes}
+            onChange={actions.setSessionMinutes}
+            min={SESSION_BOUNDS.min}
+            max={SESSION_BOUNDS.max}
+            step={SESSION_BOUNDS.step}
+            ticks={[5, 60, 180, 300, 420]}
+            presets={[15, 25, 50, 90, 180]}
+          />
+          <div className="border-t border-sand-line">
+            <DurationSlider
+              id="home-goal"
+              label="Daily goal"
+              hint="Deep work you're aiming for each day"
+              value={state.goalMinutes}
+              onChange={actions.setGoalMinutes}
+              min={GOAL_BOUNDS.min}
+              max={GOAL_BOUNDS.max}
+              step={GOAL_BOUNDS.step}
+              ticks={[10, 180, 360, 540, 720]}
+              presets={[60, 120, 180, 300, 480]}
+            />
+          </div>
         </div>
+
+        {/* check-in — off the tab bar, surfaced here when the day is old enough
+            to have something worth reflecting on */}
+        {viewingToday && (evening || checkedIn) && (
+          <button
+            onClick={() => actions.go("checkin")}
+            className="anim-cardUp sietch-card card-lift mb-3.5 flex w-full items-center gap-3.5 p-5 text-left"
+            style={{ animationDelay: ".088s" }}
+          >
+            <span className="grid h-11 w-11 flex-none place-items-center rounded-[13px] border border-spice-400/30 bg-spice-400/[0.10] text-spice-300">
+              {checkedIn ? <Check size={18} /> : <MoonIcon size={18} />}
+            </span>
+            <span className="flex-1">
+              <span className="block text-[15.5px] font-bold">
+                {checkedIn ? "Today's checked in" : "Close out the day"}
+              </span>
+              <span className="block text-[13.5px] leading-[1.4] text-muted-foreground">
+                {checkedIn
+                  ? "Tap to update how it actually went."
+                  : "A minute of reflection, then it's logged."}
+              </span>
+            </span>
+            <span className="text-spice-300"><ArrowUpRight size={17} /></span>
+          </button>
+        )}
 
         {/* this week's projects */}
         <button
@@ -338,21 +351,43 @@ export default function Home() {
             <div className="mt-1 flex flex-col gap-2.5">
               {state.projects
                 .filter((p) => state.selProj.includes(p.id))
-                .map((p) => (
-                  <div key={p.id} className="flex items-center gap-2.5">
-                    <span className="h-1.5 w-1.5 flex-none rounded-full bg-spice-400" />
-                    <span className="text-[15px] font-semibold">{p.title}</span>
-                  </div>
-                ))}
+                .map((p) => {
+                  const late = p.dueDate ? daysUntil(p.dueDate) < 0 : false;
+                  return (
+                    <div key={p.id} className="flex items-center gap-2.5">
+                      <span className="h-1.5 w-1.5 flex-none rounded-full bg-spice-400" />
+                      <span className="min-w-0 flex-1 truncate text-[15px] font-semibold">
+                        {p.title}
+                      </span>
+                      {p.dueDate && (
+                        <span
+                          className="flex-none text-[11.5px] font-semibold"
+                          style={{
+                            color: late
+                              ? "hsl(var(--destructive))"
+                              : "hsl(var(--muted-foreground))",
+                          }}
+                        >
+                          {formatDue(p.dueDate)}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
             </div>
           )}
         </button>
 
         {/* locked apps */}
         <div className="anim-cardUp sietch-card mb-3.5 p-5" style={{ animationDelay: ".12s" }}>
-          <div className="mb-4 flex items-center justify-between">
+          <div className="mb-1 flex items-center justify-between">
             <span className="eyebrow">Locked for now</span>
             <span className="text-[12px] text-muted-foreground">Tap to see</span>
+          </div>
+          {/* Says what the locking is *for*, in their words. A lock with a
+              stated purpose is easier to keep than one without. */}
+          <div className="mb-4 text-[12.5px] leading-[1.4] text-muted-foreground">
+            {goal ? <>So the time goes to {goal} instead.</> : "So the time goes somewhere you chose."}
           </div>
           <div className="flex flex-wrap justify-start gap-x-3 gap-y-4">
             {state.apps.map((app) => (

@@ -2,6 +2,7 @@
 import { useClarity } from "@/lib/clarityStore";
 import { MOODS, DAY_GO_OPTIONS, ACTIVITY_OPTIONS } from "@/lib/clarityData";
 import { formatDuration } from "@/lib/clarityStats";
+import { goalPhrase } from "@/lib/personalize";
 
 function chipStyle(on: boolean) {
   return {
@@ -15,6 +16,7 @@ export default function Checkin() {
   const { state, actions, derived } = useClarity();
   const day = derived.today;
   const alreadyDone = !!day.checkin;
+  const goal = state.profile.goal ? goalPhrase(state.profile.goal) : null;
 
   const label = "mb-3 text-[13.5px] font-semibold text-foreground/90";
 
@@ -27,7 +29,11 @@ export default function Checkin() {
         Evening check-in
       </h1>
       <p className="mb-6 mt-1.5 text-[14.5px] leading-[1.5] text-muted-foreground">
-        {alreadyDone ? "You already closed today out — this will update it." : "Take a minute to close out the day."}
+        {alreadyDone
+          ? "You already closed today out — this will update it."
+          : state.profile.name
+            ? `A minute to close the day out, ${state.profile.name}.`
+            : "Take a minute to close out the day."}
       </p>
 
       {/* what the day actually held, so the reflection has something to sit against */}
@@ -81,7 +87,9 @@ export default function Checkin() {
         ))}
       </div>
 
-      <div className={label}>What did you make time for?</div>
+      <div className={label}>
+        {goal ? <>Did you get to {goal}?</> : "What did you make time for?"}
+      </div>
       <div className="mb-7 flex flex-wrap gap-[9px]">
         {ACTIVITY_OPTIONS.map((k) => (
           <button

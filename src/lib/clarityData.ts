@@ -66,6 +66,8 @@ export interface Project {
   grades: ProjectGrade[];
   /** Set when adopted from the public feed, so credit is visible. */
   adoptedFrom?: string;
+  /** ISO day it's due. Undefined means no deadline was set. */
+  dueDate?: string;
 }
 
 const seedProject = (
@@ -167,13 +169,6 @@ export const BLOCK_LINES = [
   "Whatever is waiting in there was designed by people who are paid for your evening.",
 ];
 
-export const TASK_SUGGESTIONS = [
-  "Finish the Q3 deck",
-  "Write for 30 minutes",
-  "Study for the exam",
-  "Ship one small feature",
-];
-
 export const MOODS: { emoji: string; value: number }[] = [
   { emoji: "😞", value: 0 },
   { emoji: "😕", value: 1 },
@@ -184,78 +179,3 @@ export const MOODS: { emoji: string; value: number }[] = [
 
 export const DAY_GO_OPTIONS = ["On track", "Some progress", "Rough day"];
 export const ACTIVITY_OPTIONS = ["Deep work", "Exercise", "Read", "Rested", "Connected"];
-
-// ── Daily Read: 4 articles a week (Mon–Thu) ────────────────────────────────
-
-export interface Article {
-  id: string;
-  day: string;        // e.g. "MON"
-  category: string;
-  title: string;
-  source: string;
-  readMins: number;
-  excerpt: string;
-  body: string[];     // paragraphs
-}
-
-export const ARTICLE_DAYS = ["MON", "TUE", "WED", "THU"];
-
-/**
- * The read for today.
- *
- * The reading week is Mon–Thu; Friday through Sunday fall back to Monday's so
- * the Read tab is never empty. Home and the Read tab both call this — they used
- * to index the list two different ways and could disagree about what "today's
- * read" was.
- */
-export function todaysArticle(now: Date = new Date()): Article {
-  const i = now.getDay() - 1; // Mon = 0
-  return ARTICLES[i >= 0 && i < ARTICLES.length ? i : 0];
-}
-
-export const ARTICLES: Article[] = [
-  {
-    id: "ar-mon", day: "MON", category: "FOCUS",
-    title: "The myth of multitasking",
-    source: "Clarity Reads", readMins: 4,
-    excerpt: "Why doing two things at once means doing both worse — and the switching cost nobody budgets for.",
-    body: [
-      "We tell ourselves we are being efficient when we answer a message mid-task. In reality the brain does not run two streams at once — it drops one thread, picks up another, and pays a tax each time it switches back.",
-      "Researchers call it the switching cost. Every jump between contexts leaves a residue: part of your attention stays stuck on the last thing while you try to start the next. Do it often enough and you spend the day busy but strangely unproductive.",
-      "The fix is not willpower. It is design. Remove the option to switch — put the phone in another room, close the tabs, set one clear task — and the tax disappears. What is left is the quiet, continuous attention that real work needs.",
-    ],
-  },
-  {
-    id: "ar-tue", day: "TUE", category: "HABITS",
-    title: "Small reps beat big bursts",
-    source: "Clarity Reads", readMins: 5,
-    excerpt: "The case for boring consistency over heroic all-nighters, and how momentum actually compounds.",
-    body: [
-      "The all-nighter feels productive because it is dramatic. But drama is not the same as progress. The people who ship, write, and build the most are rarely the ones pulling heroics — they are the ones who show up for a modest block every single day.",
-      "Consistency compounds. A focused hour a day is thirty hours a month, and unlike the all-nighter, it does not wreck the next two days recovering. Momentum is the real asset, and momentum is fragile — one missed day is fine, two starts to feel like a pattern.",
-      "So make the daily rep small enough that you cannot talk yourself out of it, and protect it fiercely. The size of the block matters less than the fact that it happens.",
-    ],
-  },
-  {
-    id: "ar-wed", day: "WED", category: "ATTENTION",
-    title: "Your attention is the product",
-    source: "Clarity Reads", readMins: 4,
-    excerpt: "How the apps you lock away are engineered to hold you — and what reclaiming that time is worth.",
-    body: [
-      "The apps competing for your evening are not neutral. Teams of talented people are paid to make the next scroll irresistible, because your attention is what they sell. That is not a conspiracy — it is the business model, working exactly as designed.",
-      "You do not lose hours to these apps because you are weak. You lose them because the apps are very, very good at their job. Recognising that is freeing: the answer is not to try harder in the moment, it is to change the moment so the pull never reaches you.",
-      "That is what locking is for. Not punishment — protection. You are putting a wall between your best hours and the machine built to spend them. What you get back is not just time; it is the ability to decide what your own attention is for.",
-    ],
-  },
-  {
-    id: "ar-thu", day: "THU", category: "CLARITY",
-    title: "Name the one thing",
-    source: "Clarity Reads", readMins: 3,
-    excerpt: "Why a single, specific focus outperforms a long to-do list every time.",
-    body: [
-      "A to-do list with fifteen items is not a plan — it is a list of anxieties. When everything is a priority, nothing is, and the day dissolves into shallow motion across too many fronts.",
-      "Naming one thing does something quietly powerful: it decides in advance what today is about. Everything else can wait, get delegated, or fall away. The one thing is the anchor you keep returning to when the noise starts.",
-      "It does not have to be big. It has to be clear. Finish the deck. Write the section. Have the conversation. One clear block, given your full attention, is how a day actually gets built.",
-    ],
-  },
-];

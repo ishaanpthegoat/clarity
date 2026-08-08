@@ -16,8 +16,8 @@ import { DUR, EASE_OUT, SPRING, stagger } from "@/lib/motion";
 import { Slider } from "@/components/ui/slider";
 import Sheet from "./Sheet";
 import { ChipAction, PrimaryAction, Tip } from "./Action";
-import { formatDayLabel } from "@/lib/clarityStats";
-import { Camera, Check, Sparkle, Trash } from "./icons";
+import { daysUntil, formatDayLabel, formatDue } from "@/lib/clarityStats";
+import { Camera, Check, Sparkle, Trash, X } from "./icons";
 
 const STATUSES: { id: ProjectStatus; label: string; tooltip: string }[] = [
   { id: "idea", label: "Idea", tooltip: "Written down, not started" },
@@ -175,6 +175,47 @@ export default function ProjectSheet({
         aria-valuetext={`${project.progress} percent`}
         className="mt-2"
       />
+
+      {/* due date */}
+      <div className="mt-6 flex items-baseline justify-between">
+        <label htmlFor="proj-due" className="eyebrow eyebrow-muted">
+          Due date
+        </label>
+        {project.dueDate && (
+          <span
+            className="text-[12px] font-semibold"
+            style={{
+              color:
+                daysUntil(project.dueDate) < 0
+                  ? "hsl(var(--destructive))"
+                  : "hsl(var(--spice-200))",
+            }}
+          >
+            {formatDue(project.dueDate)}
+          </span>
+        )}
+      </div>
+      <div className="mt-2 flex items-center gap-2">
+        <input
+          id="proj-due"
+          type="date"
+          value={project.dueDate ?? ""}
+          onChange={(e) => actions.setProjectDueDate(project.id, e.target.value)}
+          aria-label={`Due date for ${project.title}`}
+          className="h-11 flex-1 rounded-[12px] border border-sand-line raise px-3.5 text-[14.5px] text-foreground outline-none focus:border-spice-400/50"
+        />
+        {project.dueDate && (
+          <Tip label="Remove the deadline">
+            <button
+              onClick={() => actions.setProjectDueDate(project.id, "")}
+              aria-label="Clear due date"
+              className="grid h-11 w-11 flex-none place-items-center rounded-[12px] border border-sand-line text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <X size={14} />
+            </button>
+          </Tip>
+        )}
+      </div>
 
       {/* notes */}
       <div className="mt-6 flex items-center justify-between">

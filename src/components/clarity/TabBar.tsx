@@ -1,13 +1,17 @@
 // Clarity — bottom tab bar.
 //
-// Six destinations, each with its word showing. The active pill is one shared
-// layout element rather than six independently-fading backgrounds, so it slides
+// Five destinations, each with its word showing. The active pill is one shared
+// layout element rather than five independently-fading backgrounds, so it slides
 // between tabs on a spring and stays interruptible if you tab twice quickly.
+//
+// Check-in used to be the sixth. It is a once-a-day, thirty-second action, which
+// made it the worst possible use of permanent bottom-bar real estate — it now
+// lives on Home, where it can appear when it is actually relevant.
 import { motion } from "motion/react";
 import { useClarity, type ClarityView } from "@/lib/clarityStore";
 import { Tip } from "./Action";
 import { SPRING } from "@/lib/motion";
-import { HomeIcon, GridIcon, ListIcon, ChartIcon, MoonIcon, BookIcon } from "./icons";
+import { HomeIcon, GridIcon, ListIcon, ChartIcon, BookIcon } from "./icons";
 
 const TABS: {
   view: ClarityView;
@@ -18,11 +22,10 @@ const TABS: {
   covers?: ClarityView[];
 }[] = [
   { view: "home", label: "Home", tooltip: "Today at a glance", Icon: HomeIcon },
-  { view: "articles", label: "Read", tooltip: "Today's read, and explain it back", Icon: BookIcon },
+  { view: "digest", label: "Digest", tooltip: "Everything you follow, once a day", Icon: BookIcon },
   { view: "todos", label: "To-do", tooltip: "Everything you said you'd do", Icon: ListIcon },
   { view: "projects", label: "Projects", tooltip: "Your 3 for the week, plus ideas", Icon: GridIcon, covers: ["grade"] },
   { view: "insights", label: "Insights", tooltip: "How the last weeks actually went", Icon: ChartIcon, covers: ["milestones"] },
-  { view: "checkin", label: "Check-in", tooltip: "Close out the day", Icon: MoonIcon },
 ];
 
 export default function TabBar() {

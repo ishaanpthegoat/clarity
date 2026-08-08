@@ -87,6 +87,28 @@ export function dayInitial(key: string): string {
   return DAY_LONG[parseKey(key).getDay()][0];
 }
 
+/** Days from today to `key`. Negative once the date has passed. */
+export function daysUntil(key: string, from: string = dateKey()): number {
+  return Math.round((parseKey(key).getTime() - parseKey(from).getTime()) / 86_400_000);
+}
+
+/**
+ * A deadline, said the way a person would.
+ *
+ * Deliberately relative near the date and absolute past a week out — "in 34
+ * days" is a number you have to decode, "Sep 10" is one you can act on.
+ */
+export function formatDue(key: string, from: string = dateKey()): string {
+  const n = daysUntil(key, from);
+  if (n === 0) return "Due today";
+  if (n === 1) return "Due tomorrow";
+  if (n === -1) return "1 day late";
+  if (n < 0) return `${Math.abs(n)} days late`;
+  if (n <= 7) return `Due in ${n} days`;
+  const d = parseKey(key);
+  return `Due ${MONTH_SHORT[d.getMonth()]} ${d.getDate()}`;
+}
+
 /** The 7 day-keys ending at `end`, oldest first. */
 export function lastSevenDays(end: string = dateKey()): string[] {
   return Array.from({ length: 7 }, (_, i) => addDays(end, i - 6));

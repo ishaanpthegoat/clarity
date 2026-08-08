@@ -8,6 +8,7 @@
 import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useClarity } from "@/lib/clarityStore";
+import { daysUntil, formatDue } from "@/lib/clarityStats";
 import { PUBLIC_IDEAS, TRENDING, type Project, type ProjectStatus } from "@/lib/clarityData";
 import { runOptimistic, simulateWrite } from "@/lib/optimistic";
 import { DUR, EASE_OUT, SPRING, stagger } from "@/lib/motion";
@@ -132,8 +133,26 @@ function ProjectRow({ project, index }: { project: Project; index: number }) {
         <span className="readout flex-none text-[12px] font-bold text-spice-200">{project.progress}%</span>
       </div>
 
-      {(lastGrade || project.adoptedFrom) && (
+      {(lastGrade || project.adoptedFrom || project.dueDate) && (
         <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-sand-line pt-3">
+          {project.dueDate && (
+            <span
+              className="rounded-full px-2.5 py-1 text-[11.5px] font-semibold"
+              style={{
+                border: `1px solid ${
+                  daysUntil(project.dueDate) < 0
+                    ? "hsl(var(--destructive) / 0.4)"
+                    : "hsl(var(--sand-line))"
+                }`,
+                color:
+                  daysUntil(project.dueDate) < 0
+                    ? "hsl(var(--destructive))"
+                    : "hsl(var(--muted-foreground))",
+              }}
+            >
+              {formatDue(project.dueDate)}
+            </span>
+          )}
           {lastGrade && (
             <span className="flex items-center gap-1.5 rounded-full border border-spice-400/25 bg-spice-400/[0.08] px-2.5 py-1 text-[11.5px] font-semibold text-spice-200">
               <Sparkle size={11} /> Graded {lastGrade.score}/100

@@ -10,7 +10,9 @@ import { CellBars, Wifi } from "./icons";
  * They get no scrim: these have their own legibility gradients, and painting a
  * band of page colour across the top would slice the top off the footage.
  */
-const FULL_BLEED: ClarityView[] = ["splash", "intro", "spring", "blocked", "focus"];
+// Onboarding is no longer here: it used to be full-bleed video, and is now a
+// chat on the page background, which does want the scrim.
+const FULL_BLEED: ClarityView[] = ["splash", "spring", "blocked", "focus"];
 
 function clock(): string {
   return new Date()

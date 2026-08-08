@@ -1,9 +1,13 @@
 // Clarity — verification pass for the redesign.
 //
 // Covers the things that are genuinely hard to be sure about by reading the
-// code: does the scrollytelling intro actually cross-fade as you scroll, do the
-// real brand marks load, do the sliders reach seven hours, and does the Read
-// tab open with today's article already on screen.
+// code: does the onboarding conversation actually advance and animate, do the
+// real brand marks decode, do the sliders reach seven hours now that they live
+// on Home, and does the Digest tab open with today's read already built.
+//
+// Deliberately complements `digest.spec.ts` rather than repeating it: that file
+// asserts behaviour and copy, this one asserts rendering, computed style and
+// screenshots.
 import { test, expect, type Page } from "@playwright/test";
 import fs from "node:fs";
 import path from "node:path";
@@ -11,7 +15,7 @@ import path from "node:path";
 const SHOTS = path.join(process.cwd(), "e2e", "shots");
 fs.mkdirSync(SHOTS, { recursive: true });
 
-const STORAGE_KEY = "clarity.state.v3";
+const STORAGE_KEY = "clarity.state.v4";
 
 function dateKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -23,7 +27,7 @@ function ago(n: number): string {
 }
 
 /** A plausible fortnight so no screen is judged on its empty state. */
-function seed(introSeen: boolean) {
+function seed(onboarded: boolean) {
   const minutes: Record<number, number> = {
     0: 92, 1: 145, 2: 60, 3: 168, 4: 30, 5: 120, 6: 0,
     7: 95, 8: 140, 9: 55, 10: 20, 11: 110, 12: 0, 13: 75,
@@ -44,15 +48,20 @@ function seed(introSeen: boolean) {
   }
   return {
     locking: true,
-    task: "Finish the Q3 deck",
-    name: "Ishaan",
+    profile: {
+      name: "Ishaan",
+      interests: ["tech", "sports"],
+      specifics: { tech: "AI research" },
+      goal: "ship a side project",
+      avoid: "",
+    },
+    onboarded,
     sessionMinutes: 25,
     goalMinutes: 180,
     theme: "dark",
     strictDefault: false,
-    introSeen,
     isPro: true,
-    articlesDone: [],
+    digestRead: [],
     selProj: ["p1", "p2"],
     cheered: [],
     adopted: [],
@@ -64,7 +73,7 @@ function seed(introSeen: boolean) {
   };
 }
 
-async function boot(page: Page, { introSeen = true } = {}) {
+async function boot(page: Page, { onboarded = true } = {}) {
   const errors: string[] = [];
   page.on("console", (m) => {
     if (m.type() === "error") errors.push(m.text());
@@ -73,7 +82,7 @@ async function boot(page: Page, { introSeen = true } = {}) {
 
   await page.addInitScript(
     ([key, value]) => window.localStorage.setItem(key as string, value as string),
-    [STORAGE_KEY, JSON.stringify(seed(introSeen))],
+    [STORAGE_KEY, JSON.stringify(seed(onboarded))],
   );
   await page.goto("/");
   // Past the splash.
@@ -86,48 +95,53 @@ function frame(page: Page) {
   return page.locator(".clarity-root > div").first();
 }
 
-test("scrollytelling intro cross-fades through all five acts", async ({ page }) => {
-  const errors = await boot(page, { introSeen: false });
+/** Answers the bot, waiting for it to finish composing first. */
+async function reply(page: Page, text: string) {
+  const box = page.locator("input[placeholder]").first();
+  await expect(box).toBeEnabled({ timeout: 10_000 });
+  await box.fill(text);
+  await box.press("Enter");
+}
 
-  const scroller = page.locator(".clarity-scroll").first();
-  await expect(scroller).toBeVisible();
+test("the onboarding conversation advances, animates and completes", async ({ page }) => {
+  // Replaces the old scrollytelling-intro test — that screen is gone. What is
+  // worth verifying here is the same class of thing: computed style changing
+  // over the course of the flow, which no amount of code reading confirms.
+  const errors = await boot(page, { onboarded: false });
 
-  const readActs = () =>
-    page.$$eval("[aria-hidden='true']", (els) =>
-      els
-        .filter((e) => e.querySelector("video"))
-        .map((e) => Number(Number(getComputedStyle(e).opacity).toFixed(2))),
-    );
+  const bot = page.locator('[data-turn="bot"]');
+  await expect(bot).toHaveCount(1);
+  await frame(page).screenshot({ path: path.join(SHOTS, "r-onboarding-open.png") });
 
-  // Act 0 alone at the top.
-  const atTop = await readActs();
-  expect(atTop.length).toBe(5);
-  expect(atTop[0]).toBeGreaterThan(0.9);
-  expect(atTop[4]).toBeLessThan(0.1);
-  await frame(page).screenshot({ path: path.join(SHOTS, "r-intro-act0.png") });
+  /** The progress bar is the only signal the conversation has an end. */
+  const progress = () =>
+    page.locator("[data-progress]").evaluate((el) => el.getBoundingClientRect().width);
 
-  // Walk the scroll and make sure the lit act actually moves along.
-  const brightest: number[] = [];
-  for (const frac of [0, 0.25, 0.5, 0.75, 1]) {
-    await scroller.evaluate((el, f) => {
-      el.scrollTop = (el.scrollHeight - el.clientHeight) * (f as number);
-    }, frac);
-    await page.waitForTimeout(420);
-    const ops = await readActs();
-    brightest.push(ops.indexOf(Math.max(...ops)));
-    if (frac === 0.5) await frame(page).screenshot({ path: path.join(SHOTS, "r-intro-mid.png") });
+  const widths: number[] = [await progress()];
+
+  await reply(page, "Ishaan");
+  await expect(bot).toHaveCount(2, { timeout: 10_000 });
+  widths.push(await progress());
+
+  await reply(page, "finally learn to cook properly");
+  await expect(bot).toHaveCount(3, { timeout: 10_000 });
+  widths.push(await progress());
+  await frame(page).screenshot({ path: path.join(SHOTS, "r-onboarding-mid.png") });
+
+  await reply(page, "football and AI stuff");
+  await expect(bot).toHaveCount(4, { timeout: 10_000 });
+  widths.push(await progress());
+
+  // Strictly increasing: every answer visibly moves the bar along.
+  for (let i = 1; i < widths.length; i++) {
+    expect(widths[i]).toBeGreaterThan(widths[i - 1]);
   }
 
-  // Strictly increasing: each quarter of the scroll lights a later act.
-  expect(brightest[0]).toBe(0);
-  expect(brightest[brightest.length - 1]).toBe(4);
-  for (let i = 1; i < brightest.length; i++) {
-    expect(brightest[i]).toBeGreaterThanOrEqual(brightest[i - 1]);
-  }
+  await frame(page).screenshot({ path: path.join(SHOTS, "r-onboarding-end.png") });
 
-  // The CTA only earns its place at the end.
-  await expect(page.getByRole("button", { name: "Get started" })).toBeVisible();
-  await frame(page).screenshot({ path: path.join(SHOTS, "r-intro-act4.png") });
+  // It ends in the app, not on a paywall.
+  await page.getByRole("button", { name: /Nothing specific/i }).click();
+  await expect(page.locator('nav[aria-label="Main"]')).toBeVisible({ timeout: 10_000 });
 
   expect(errors).toEqual([]);
 });
@@ -156,12 +170,10 @@ test("real brand marks load on home and the block screen", async ({ page }) => {
 test("session length reaches 7 hours and the daily goal steps in tens", async ({ page }) => {
   const errors = await boot(page);
 
-  await page.getByRole("button", { name: /^Settings —/ }).click();
-  await page.waitForTimeout(400);
-
-  // Radix puts role="slider" (and the value) on the thumb, not the root.
-  const session = page.locator("#session-length [role='slider']");
-  const goal = page.locator("#daily-goal [role='slider']");
+  // Both dials moved out of Settings onto Home — they are retuned often enough
+  // that three taps deep was the wrong place for them.
+  const session = page.locator("#home-session [role='slider']");
+  const goal = page.locator("#home-goal [role='slider']");
   await expect(session).toBeVisible();
 
   // Drive the sliders with the keyboard — End lands on the maximum.
@@ -169,7 +181,7 @@ test("session length reaches 7 hours and the daily goal steps in tens", async ({
   await page.keyboard.press("End");
   await page.waitForTimeout(300);
   expect(await session.getAttribute("aria-valuenow")).toBe("420"); // 7 hours
-  await expect(page.locator("output[for='session-length']")).toHaveText("7h");
+  await expect(page.locator("output[for='home-session']")).toHaveText("7h");
 
   await goal.focus();
   await page.keyboard.press("Home");
@@ -181,39 +193,47 @@ test("session length reaches 7 hours and the daily goal steps in tens", async ({
   expect(min).toBe(10);
   expect(next - min).toBe(10);
 
-  await frame(page).screenshot({ path: path.join(SHOTS, "r-settings.png") });
+  await frame(page).screenshot({ path: path.join(SHOTS, "r-home-dials.png") });
   expect(errors).toEqual([]);
 });
 
-test("the Read tab opens with today's article already there", async ({ page }) => {
+test("the Digest tab opens with today's read already built", async ({ page }) => {
   const errors = await boot(page);
 
-  await page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "Read", exact: true }).click();
-  await page.waitForTimeout(500);
+  await page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "Digest", exact: true }).click();
 
-  // No chooser, no empty state — a real article body is on screen.
-  const paragraphs = await page.$$eval("p", (ps) => ps.filter((p) => p.textContent!.length > 120).length);
-  expect(paragraphs).toBeGreaterThanOrEqual(2);
-  await expect(page.getByRole("button", { name: /record my understanding/i })).toBeVisible();
-  await frame(page).screenshot({ path: path.join(SHOTS, "r-read.png") });
+  // One section per followed interest, each with real prose — no chooser and
+  // no empty state between you and the read.
+  const sections = page.locator("section[aria-labelledby^='digest-']");
+  await expect(sections).toHaveCount(2, { timeout: 20_000 });
 
-  // Recording is reachable and takes over the frame.
-  await page.getByRole("button", { name: /record my understanding/i }).click();
-  await page.waitForTimeout(500);
-  await expect(page.getByRole("button", { name: /Start recording/i })).toBeVisible();
-  await frame(page).screenshot({ path: path.join(SHOTS, "r-read-record.png") });
+  const prose = await page.$$eval(
+    "section[aria-labelledby^='digest-'] p",
+    (ps) => ps.filter((p) => p.textContent!.length > 120).length,
+  );
+  expect(prose).toBeGreaterThanOrEqual(2);
+
+  await expect(page.getByRole("button", { name: /caught up/i })).toBeVisible();
+  await frame(page).screenshot({ path: path.join(SHOTS, "r-digest.png") });
+
+  // And it can be finished — the point of the screen is that it ends.
+  await page.getByRole("button", { name: /caught up/i }).click();
+  await expect(page.getByText(/Done for today/i)).toBeVisible();
+  await frame(page).screenshot({ path: path.join(SHOTS, "r-digest-done.png") });
 
   expect(errors).toEqual([]);
 });
 
-test("home hands off into the Read tab already recording", async ({ page }) => {
+test("the Home card hands off into the Digest tab", async ({ page }) => {
   const errors = await boot(page);
 
-  await page.getByRole("button", { name: /Record your understanding/i }).click();
-  await page.waitForTimeout(600);
+  await page.getByRole("button", { name: /Today.s digest/i }).first().click();
 
-  // Landed in the Read tab, at the record stage, without passing the article.
-  await expect(page.getByRole("button", { name: /Start recording/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Your digest/i })).toBeVisible();
+  await expect(page.locator("section[aria-labelledby^='digest-']").first()).toBeVisible({
+    timeout: 20_000,
+  });
+
   expect(errors).toEqual([]);
 });
 
@@ -248,7 +268,7 @@ test("projects is sectioned, ideas stay on the main page, grading runs", async (
   expect(errors).toEqual([]);
 });
 
-test("the project workspace sheet opens and holds notes, progress and grades", async ({ page }) => {
+test("the project workspace sheet holds notes, progress and a due date", async ({ page }) => {
   const errors = await boot(page);
 
   await page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "Projects", exact: true }).click();
@@ -262,8 +282,17 @@ test("the project workspace sheet opens and holds notes, progress and grades", a
   const sheet = page.getByRole("dialog");
   await expect(sheet).toBeVisible();
   await expect(sheet.getByText("Working notes")).toBeVisible();
-  await sheet.getByRole("textbox").fill("Narrative section is the blocker.");
-  await page.waitForTimeout(500);
+  await sheet.locator("#proj-notes").fill("Narrative section is the blocker.");
+
+  // Due dates are new — the sheet is where they are set.
+  const due = page.locator("#proj-due");
+  await expect(due).toBeVisible();
+  const soon = new Date();
+  soon.setDate(soon.getDate() + 5);
+  await due.fill(soon.toISOString().slice(0, 10));
+  await expect(page.getByText("Due in 5 days").first()).toBeVisible();
+
+  await page.waitForTimeout(400);
   await frame(page).screenshot({ path: path.join(SHOTS, "r-project-sheet.png") });
 
   expect(errors).toEqual([]);

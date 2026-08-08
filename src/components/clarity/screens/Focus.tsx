@@ -1,36 +1,30 @@
 ﻿// Clarity — the focus session.
 // Commit Mode removes the exits on purpose; quitting is still possible, but it
 // costs a confirmation and it goes into your history as what it was.
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import confetti from "canvas-confetti";
 import { useClarity, fmtTime } from "@/lib/clarityStore";
 import { formatDuration } from "@/lib/clarityStats";
-import { playSoundscape, SOUNDSCAPES, type SoundHandle } from "@/lib/soundscape";
+import { goalPhrase } from "@/lib/personalize";
 import SpiceRing from "../SpiceRing";
-import { Check, Lock, Sound, SoundOff } from "../icons";
+import { Check, Lock } from "../icons";
 
 export default function Focus() {
   const { state, actions } = useClarity();
   const [confirmQuit, setConfirmQuit] = useState(false);
-  const [muted, setMuted] = useState(false);
-  const soundRef = useRef<SoundHandle | null>(null);
+
+  // Sessions hang off the week's projects now that there is no daily task.
+  const focusLabel =
+    state.projects.find((p) => state.selProj.includes(p.id))?.title ?? "your work";
+
+  // What the block actually bought them, in the words they used for it.
+  const goal = state.profile.goal ? goalPhrase(state.profile.goal) : null;
 
   const frac = state.focusTotal ? (state.focusTotal - state.focusLeft) / state.focusTotal : 0;
   const elapsed = state.focusTotal - state.focusLeft;
 
-  // Ambient sound follows the session, and stops the moment it ends.
-  useEffect(() => {
-    if (state.soundscape === "none" || muted || state.focusDone) return;
-    soundRef.current = playSoundscape(state.soundscape);
-    return () => {
-      soundRef.current?.stop();
-      soundRef.current = null;
-    };
-  }, [state.soundscape, muted, state.focusDone]);
-
   useEffect(() => {
     if (!state.focusDone) return;
-    soundRef.current?.stop();
     confetti({
       particleCount: 110,
       spread: 75,
@@ -44,8 +38,6 @@ export default function Focus() {
     });
   }, [state.focusDone]);
 
-  const soundName = SOUNDSCAPES.find((s) => s.id === state.soundscape)?.name;
-
   return (
     <div
       className="anim-fadeIn absolute inset-0 flex flex-col px-[26px] pb-[60px] pt-[92px]"
@@ -57,7 +49,7 @@ export default function Focus() {
           {state.strict && <span className="text-spice-400"><Lock size={12} /></span>}
         </div>
         <div className="mt-2 text-[18px] font-semibold text-foreground/90">
-          {state.task || "Focus"}
+          {focusLabel}
         </div>
       </div>
 
@@ -68,15 +60,6 @@ export default function Focus() {
             <div className="eyebrow eyebrow-muted mt-1">Remaining</div>
           </SpiceRing>
 
-          {state.soundscape !== "none" && (
-            <button
-              onClick={() => setMuted((m) => !m)}
-              className="mt-6 flex items-center gap-2 rounded-full border border-sand-line raise px-3.5 py-1.5 text-[12.5px] font-medium text-muted-foreground transition-colors hover:text-foreground"
-            >
-              {muted ? <SoundOff size={14} /> : <Sound size={14} />}
-              {muted ? "Sound off" : soundName}
-            </button>
-          )}
 
           <div className="mt-8 flex w-full gap-3">
             <button
@@ -134,8 +117,13 @@ export default function Focus() {
             That was real focus
           </div>
           <div className="readout mt-2 text-[15px] text-spice-300">
-            {formatDuration(elapsed)} on {state.task || "your work"}
+            {formatDuration(elapsed)} on {focusLabel}
           </div>
+          {goal && (
+            <div className="mt-2 max-w-[300px] text-[14px] leading-[1.45] text-muted-foreground">
+              That&rsquo;s {formatDuration(elapsed)} that went to {goal} instead of a feed.
+            </div>
+          )}
 
           <div className="mt-7 w-full text-left">
             <label htmlFor="session-note" className="eyebrow eyebrow-muted mb-2 block">
