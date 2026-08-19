@@ -11,7 +11,7 @@ import { motion } from "motion/react";
 import { useClarity, type ClarityView } from "@/lib/clarityStore";
 import { Tip } from "./Action";
 import { SPRING } from "@/lib/motion";
-import { HomeIcon, GridIcon, ListIcon, ChartIcon, BookIcon, MoonIcon } from "./icons";
+import { HomeIcon, GridIcon, ListIcon, ChartIcon, BookIcon } from "./icons";
 
 const TABS: {
   view: ClarityView;
@@ -26,7 +26,6 @@ const TABS: {
   { view: "todos", label: "To-do", tooltip: "Everything you said you'd do", Icon: ListIcon },
   { view: "projects", label: "Projects", tooltip: "Your 3 for the week, plus ideas", Icon: GridIcon },
   { view: "insights", label: "Insights", tooltip: "How the last weeks actually went", Icon: ChartIcon, covers: ["milestones"] },
-  { view: "knows", label: "Knows", tooltip: "What Clarity has learned about you", Icon: MoonIcon },
 ];
 
 export default function TabBar() {

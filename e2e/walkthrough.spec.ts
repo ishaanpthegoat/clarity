@@ -133,9 +133,6 @@ test("walk every screen", async ({ page }) => {
   await tab("Projects").click();
   await shot(page, "05-projects");
 
-  await tab("Knows").click();
-  await shot(page, "06-knows");
-
   await tab("Home").click();
   await page.getByRole("button", { name: /^Settings —/ }).click();
   await shot(page, "07-settings");

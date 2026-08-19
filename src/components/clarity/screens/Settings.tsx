@@ -44,6 +44,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 export default function Settings() {
   const { state, actions } = useClarity();
   const [confirmReset, setConfirmReset] = useState(false);
+  const [confirmForget, setConfirmForget] = useState(false);
 
   const { interests } = state.profile;
 
@@ -126,11 +127,9 @@ export default function Settings() {
                 <Tip key={c.id} label={on ? `Stop following ${c.label}` : c.blurb}>
                   <button
                     onClick={() =>
-                      actions.setProfile({
-                        interests: on
-                          ? interests.filter((x) => x !== c.id)
-                          : [...interests, c.id],
-                      })
+                      actions.setInterests(
+                        on ? interests.filter((x) => x !== c.id) : [...interests, c.id],
+                      )
                     }
                     aria-pressed={on}
                     className="flex min-h-[44px] items-center gap-2 rounded-[13px] px-3.5 text-[14px] font-semibold transition-colors"
@@ -375,6 +374,19 @@ export default function Settings() {
             </button>
           </Tip>
         </Row>
+        <Row
+          label="Forget what Clarity knows"
+          hint="Wipes the profile above and starts onboarding again. Your history stays."
+        >
+          <Tip label="Delete the profile and re-run onboarding">
+            <button
+              onClick={() => setConfirmForget(true)}
+              className="flex h-11 items-center gap-1.5 rounded-[10px] border border-destructive/40 px-4 text-[13.5px] font-semibold text-destructive"
+            >
+              <Trash size={14} /> Forget
+            </button>
+          </Tip>
+        </Row>
         <Row label="Reset everything" hint="Clears your history. This cannot be undone.">
           <Tip label="Delete every logged day, session and project">
             <button
@@ -392,6 +404,33 @@ export default function Settings() {
       <p className="mb-6 px-1 text-[12.5px] leading-[1.5] text-muted-foreground">
         Your history is stored on this device and never leaves it.
       </p>
+
+      {confirmForget && (
+        <div className="anim-fadeIn mb-6 rounded-[18px] border border-destructive/35 bg-destructive/[0.07] p-4 text-center">
+          <div className="text-[15px] font-semibold">Forget what Clarity knows?</div>
+          <div className="mt-1.5 text-[13px] leading-[1.45] text-muted-foreground">
+            Your name, goal, what you follow and today&rsquo;s digest all go, and onboarding runs
+            again. Your history, projects and to-dos stay.
+          </div>
+          <div className="mt-3.5 flex gap-2">
+            <button
+              onClick={() => setConfirmForget(false)}
+              className="h-11 flex-1 rounded-[12px] border border-sand-line text-[13.5px] font-semibold"
+            >
+              Keep it
+            </button>
+            <button
+              onClick={() => {
+                setConfirmForget(false);
+                actions.forgetProfile();
+              }}
+              className="h-11 flex-1 rounded-[12px] bg-destructive/85 text-[13.5px] font-semibold text-white"
+            >
+              Forget
+            </button>
+          </div>
+        </div>
+      )}
 
       {confirmReset && (
         <div className="anim-fadeIn mb-6 rounded-[18px] border border-destructive/35 bg-destructive/[0.07] p-4 text-center">

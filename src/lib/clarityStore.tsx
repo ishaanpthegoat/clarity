@@ -55,8 +55,7 @@ export type ClarityView =
   | "paywall"
   | "digest"
   | "insights"
-  | "milestones"
-  | "knows";
+  | "milestones";
 
 export type ThemeMode = "dark" | "light";
 

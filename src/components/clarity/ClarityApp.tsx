@@ -20,7 +20,6 @@ import Paywall from "./screens/Paywall";
 import Digest from "./screens/Digest";
 import Insights from "./screens/Insights";
 import Milestones from "./screens/Milestones";
-import Knows from "./screens/Knows";
 
 function Screens() {
   const { state } = useClarity();
@@ -38,7 +37,6 @@ function Screens() {
     case "digest": return <Digest />;
     case "insights": return <Insights />;
     case "milestones": return <Milestones />;
-    case "knows": return <Knows />;
     default: return <Home />;
   }
 }
@@ -57,7 +55,6 @@ function useShortcuts() {
       switch (e.key.toLowerCase()) {
         case "h": actions.go("home"); break;
         case "f": actions.startFocus(); break;
-        case "k": actions.go("knows"); break;
         case "l": actions.toggleLock(); break;
         case "i": actions.go("insights"); break;
         case "r": actions.go("digest"); break;

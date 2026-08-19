@@ -384,14 +384,12 @@ test.describe("the profile actually changes the app", () => {
 });
 
 test.describe("the removed features stay removed", () => {
-  test("six tabs, and Check-in is not one of them", async ({ page }) => {
+  test("five tabs, and Check-in is not one of them", async ({ page }) => {
     await onboarded(page);
 
     const tabs = page.locator('nav[aria-label="Main"] button');
-    await expect(tabs).toHaveCount(6);
-    await expect(tabs).toHaveText([
-      "Home", "Digest", "To-do", "Projects", "Insights", "Knows",
-    ]);
+    await expect(tabs).toHaveCount(5);
+    await expect(tabs).toHaveText(["Home", "Digest", "To-do", "Projects", "Insights"]);
   });
 
   test("the check-in is gone entirely, not just off the tab bar", async ({ page }) => {
