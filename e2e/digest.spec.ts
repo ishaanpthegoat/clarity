@@ -384,32 +384,25 @@ test.describe("the profile actually changes the app", () => {
 });
 
 test.describe("the removed features stay removed", () => {
-  test("five tabs, and Check-in is not one of them", async ({ page }) => {
+  test("six tabs, and Check-in is not one of them", async ({ page }) => {
     await onboarded(page);
 
     const tabs = page.locator('nav[aria-label="Main"] button');
-    await expect(tabs).toHaveCount(5);
-    await expect(tabs).toHaveText(["Home", "Digest", "To-do", "Projects", "Insights"]);
+    await expect(tabs).toHaveCount(6);
+    await expect(tabs).toHaveText([
+      "Home", "Digest", "To-do", "Projects", "Insights", "Knows",
+    ]);
   });
 
-  test("check-in moved onto Home and still saves", async ({ page }) => {
+  test("the check-in is gone entirely, not just off the tab bar", async ({ page }) => {
     await onboarded(page);
 
-    // Only surfaced in the evening, so drive it directly rather than making
-    // the assertion depend on what time the suite runs.
     await page.keyboard.press("c");
-    await expect(page.getByRole("heading", { name: /Evening check-in/i })).toBeVisible();
-
-    await page.getByRole("button", { name: /Mood 4 of 5/i }).click();
-    await page.getByRole("button", { name: /Finish check-in/i }).click();
     await expect(page.getByRole("heading", { name: /Evening check-in/i })).toHaveCount(0);
   });
 
-  test("no daily task, no ambient sound, no breathing gate", async ({ page }) => {
+  test("no ambient sound, no breathing gate", async ({ page }) => {
     await onboarded(page);
-
-    await expect(page.getByText(/Today.s focus/i)).toHaveCount(0);
-    await expect(page.getByText(/Name the one thing/i)).toHaveCount(0);
 
     await page.getByRole("button", { name: /^Settings/ }).click();
     await expect(page.getByRole("heading", { name: /Settings/i })).toBeVisible();

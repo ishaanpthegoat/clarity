@@ -133,12 +133,8 @@ test("walk every screen", async ({ page }) => {
   await tab("Projects").click();
   await shot(page, "05-projects");
 
-  // Check-in lost its tab — it is a Home card now, reachable by shortcut so
-  // this doesn't depend on what time the suite runs.
-  await tab("Home").click();
-  await page.keyboard.press("c");
-  await expect(page.getByRole("heading", { name: /Evening check-in/i })).toBeVisible();
-  await shot(page, "06-checkin");
+  await tab("Knows").click();
+  await shot(page, "06-knows");
 
   await tab("Home").click();
   await page.getByRole("button", { name: /^Settings —/ }).click();

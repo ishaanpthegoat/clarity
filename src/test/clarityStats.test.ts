@@ -1,6 +1,9 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
 import {
   addDays,
+  CARRYOVER_MAX,
+  CARRYOVER_MIN,
+  carryoverFrom,
   clarityScore,
   computeStreak,
   dateKey,
@@ -94,7 +97,60 @@ describe("computeStreak", () => {
   });
 });
 
+describe("carryoverFrom", () => {
+  it("opens at the floor when there is no yesterday to carry", () => {
+    expect(carryoverFrom(undefined, 180)).toBe(CARRYOVER_MIN);
+  });
+
+  it("opens at the floor after a day where nothing was logged", () => {
+    expect(carryoverFrom(emptyDay("2026-07-24"), 180)).toBe(CARRYOVER_MIN);
+  });
+
+  it("opens at the ceiling after a day that hit the goal", () => {
+    const yesterday = { ...emptyDay("2026-07-24"), focusedSeconds: 180 * 60 };
+    expect(carryoverFrom(yesterday, 180)).toBe(CARRYOVER_MAX);
+  });
+
+  it("lands halfway up the band after half a day", () => {
+    const yesterday = { ...emptyDay("2026-07-24"), focusedSeconds: 90 * 60 };
+    expect(carryoverFrom(yesterday, 180)).toBe(15);
+  });
+
+  it("never leaves the 5-25 band", () => {
+    for (const mins of [0, 1, 45, 179, 180, 10_000]) {
+      const value = carryoverFrom({ ...emptyDay("d"), focusedSeconds: mins * 60 }, 180);
+      expect(value).toBeGreaterThanOrEqual(CARRYOVER_MIN);
+      expect(value).toBeLessThanOrEqual(CARRYOVER_MAX);
+    }
+  });
+
+  it("reads yesterday's earned figure, so a carried floor cannot compound", () => {
+    // A day whose *displayed* score was only ever the floor still earned zero,
+    // so tomorrow opens at the floor again rather than ratcheting upward.
+    const idle = emptyDay("2026-07-24");
+    expect(clarityScore(idle, 180, 25).score).toBe(25);
+    expect(carryoverFrom(idle, 180)).toBe(CARRYOVER_MIN);
+  });
+});
+
 describe("clarityScore", () => {
+  it("opens the day on the carried floor rather than zero", () => {
+    expect(clarityScore(emptyDay("2026-07-24"), 180, 18).score).toBe(18);
+  });
+
+  it("lets a real day overtake the floor", () => {
+    const day = { ...emptyDay("d"), focusedSeconds: 180 * 60 };
+    expect(clarityScore(day, 180, 25).score).toBe(100);
+  });
+
+  it("reports the floor and the earned figure separately", () => {
+    const day = { ...emptyDay("d"), focusedSeconds: 18 * 60 };
+    const result = clarityScore(day, 180, 20);
+    expect(result.earned).toBe(10);
+    expect(result.carryover).toBe(20);
+    expect(result.score).toBe(20);
+  });
+
   it("is zero for an untouched day", () => {
     expect(clarityScore(emptyDay("2026-07-24"), 180).score).toBe(0);
   });

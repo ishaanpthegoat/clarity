@@ -4,8 +4,11 @@
 // a read time in the header, and a button at the bottom that closes it out.
 // There is no infinite list here by design — that is the thing the app exists
 // to replace.
+import { useCallback, useRef } from "react";
 import { motion } from "motion/react";
 import { useClarity } from "@/lib/clarityStore";
+import { useSwipeUpSync } from "@/lib/useSwipeUpSync";
+import SyncHint from "../SyncHint";
 import { categoryLabel } from "@/lib/feeds";
 import { greet, goalPhrase, rankHeadlines, specificFor } from "@/lib/personalize";
 import { DUR, EASE_OUT, stagger } from "@/lib/motion";
@@ -30,12 +33,17 @@ function Loading() {
 
 export default function Digest() {
   const { state, actions, derived } = useClarity();
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const sync = useSwipeUpSync(scrollRef, useCallback(() => actions.syncNow(), [actions]));
   const digest = state.digest;
   const done = derived.digestDone;
   const goal = state.profile.goal ? goalPhrase(state.profile.goal) : null;
 
   return (
-    <div className="anim-fadeIn clarity-scroll absolute inset-0 flex flex-col overflow-y-auto bg-background px-[22px] pb-[118px] pt-[calc(78px_+_var(--safe-t))]">
+    <div
+      ref={scrollRef}
+      className="anim-fadeIn clarity-scroll absolute inset-0 flex flex-col overflow-y-auto bg-background px-[22px] pb-[118px] pt-[calc(78px_+_var(--safe-t))]"
+    >
       <div className="mb-1 flex items-baseline justify-between">
         <h1 className="font-display text-[32px] font-semibold uppercase tracking-[0.03em]">
           {greet(state.profile.name).replace(/,.*/, "") === "Good morning"
@@ -185,6 +193,8 @@ export default function Digest() {
               </PrimaryAction>
             )}
           </div>
+
+          <SyncHint progress={sync.progress} syncing={sync.syncing} />
         </>
       )}
     </div>

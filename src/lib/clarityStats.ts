@@ -19,13 +19,6 @@ export interface Session {
   note?: string;
 }
 
-export interface Checkin {
-  mood: number;
-  dayGo: string;
-  activities: string[];
-  note: string;
-}
-
 export interface DayLog {
   /** YYYY-MM-DD, local */
   date: string;
@@ -38,7 +31,6 @@ export interface DayLog {
   holds: number;
   todosDone: number;
   todosTotal: number;
-  checkin?: Checkin;
 }
 
 export type DayMap = Record<string, DayLog>;
@@ -192,6 +184,47 @@ export interface ClarityScore {
   focusPct: number;
   taskPct: number;
   holdPct: number;
+  /** The floor this day opened on, carried from yesterday. */
+  carryover: number;
+  /** What today's own activity has earned, ignoring the floor. */
+  earned: number;
+}
+
+/**
+ * A new day never opens at zero.
+ *
+ * Yesterday's earned score maps onto a 5–25 floor for today: a day you gave
+ * everything to starts the next one at 25, a day you gave nothing to still
+ * starts at 5. The floor is deliberately small — a running start, not a free
+ * ride, and today still has to be earned on its own.
+ *
+ * Note this reads yesterday's *earned* figure, not its displayed one. Feeding
+ * the displayed score back in would let the floor compound on itself, and a
+ * week of doing nothing would drift upward on its own inertia.
+ */
+export const CARRYOVER_MIN = 5;
+export const CARRYOVER_MAX = 25;
+
+export function carryoverFrom(yesterday: DayLog | undefined, goalMinutes: number): number {
+  if (!yesterday) return CARRYOVER_MIN;
+  const earned = earnedScore(yesterday, goalMinutes);
+  return Math.round(CARRYOVER_MIN + (earned / 100) * (CARRYOVER_MAX - CARRYOVER_MIN));
+}
+
+/** Today's score on its own merits, before any carried floor is applied. */
+function earnedScore(day: DayLog, goalMinutes: number): number {
+  const goalSeconds = Math.max(1, goalMinutes * 60);
+  const focusPct = Math.min(1, day.focusedSeconds / goalSeconds);
+  const taskPct = day.todosTotal ? day.todosDone / day.todosTotal : 0;
+  const holdPct = day.pulls ? day.holds / day.pulls : 1;
+
+  const parts: [number, number][] = [[focusPct, 0.6]];
+  if (day.todosTotal > 0) parts.push([taskPct, 0.25]);
+  if (day.pulls > 0) parts.push([holdPct, 0.15]);
+
+  const totalWeight = parts.reduce((sum, [, w]) => sum + w, 0);
+  const weighted = parts.reduce((sum, [v, w]) => sum + v * w, 0);
+  return Math.max(0, Math.min(100, Math.round((weighted / totalWeight) * 100)));
 }
 
 /**
@@ -206,21 +239,17 @@ export interface ClarityScore {
  * never wrote down and the temptations that never came, and the score would
  * open at 15% on an untouched morning.
  */
-export function clarityScore(day: DayLog, goalMinutes: number): ClarityScore {
+export function clarityScore(day: DayLog, goalMinutes: number, carryover = 0): ClarityScore {
   const goalSeconds = Math.max(1, goalMinutes * 60);
   const focusPct = Math.min(1, day.focusedSeconds / goalSeconds);
   const taskPct = day.todosTotal ? day.todosDone / day.todosTotal : 0;
   const holdPct = day.pulls ? day.holds / day.pulls : 1;
 
-  const parts: [number, number][] = [[focusPct, 0.6]];
-  if (day.todosTotal > 0) parts.push([taskPct, 0.25]);
-  if (day.pulls > 0) parts.push([holdPct, 0.15]);
+  const earned = earnedScore(day, goalMinutes);
+  // The floor lifts a quiet morning off zero; it never caps a good day.
+  const score = Math.max(0, Math.min(100, Math.max(earned, carryover)));
 
-  const totalWeight = parts.reduce((sum, [, w]) => sum + w, 0);
-  const weighted = parts.reduce((sum, [v, w]) => sum + v * w, 0);
-  const score = Math.round((weighted / totalWeight) * 100);
-
-  return { score: Math.max(0, Math.min(100, score)), focusPct, taskPct, holdPct };
+  return { score, focusPct, taskPct, holdPct, carryover, earned };
 }
 
 // ── aggregates ───────────────────────────────────────────────────────

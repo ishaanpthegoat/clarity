@@ -2,7 +2,7 @@
 //
 // Each skeleton mirrors the real layout it stands in for, so nothing jumps when
 // the content lands. They only appear where there is genuinely something to
-// wait for — rehydrating history off disk, a grade coming back from the model.
+// wait for — rehydrating history off disk, the digest arriving.
 // A skeleton over instant content just adds a flicker.
 import { Skeleton, SkeletonText } from "@/components/ui/skeleton";
 
@@ -96,25 +96,3 @@ export function ArticleSkeleton() {
   );
 }
 
-/** The grade card, while the model is looking at the photo. */
-export function GradeSkeleton() {
-  return (
-    <div className="sietch-card p-5" aria-busy="true" aria-label="Grading your project">
-      <div className="flex items-center gap-4">
-        <Skeleton className="h-[62px] w-[62px] rounded-full" />
-        <div className="flex-1">
-          <Skeleton className="h-4 w-[70%]" />
-          <Skeleton className="mt-2.5 h-3 w-[45%]" />
-        </div>
-      </div>
-      <div className="mt-5 flex flex-col gap-3.5">
-        {[0, 1, 2, 3].map((i) => (
-          <div key={i} className="flex items-center gap-3">
-            <Skeleton className="h-2.5 w-16" style={{ animationDelay: `${i * 0.08}s` }} />
-            <Skeleton className="h-2 flex-1 rounded-full" style={{ animationDelay: `${i * 0.08}s` }} />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}

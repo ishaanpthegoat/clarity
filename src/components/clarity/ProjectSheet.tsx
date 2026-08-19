@@ -10,70 +10,19 @@ import { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { useClarity } from "@/lib/clarityStore";
 import type { Project, ProjectStatus } from "@/lib/clarityData";
-import { GRADE_RUBRIC } from "@/lib/clarityData";
 import { runOptimistic, simulateWrite } from "@/lib/optimistic";
-import { DUR, EASE_OUT, SPRING, stagger } from "@/lib/motion";
+import { DUR, SPRING } from "@/lib/motion";
 import { Slider } from "@/components/ui/slider";
 import Sheet from "./Sheet";
 import { ChipAction, PrimaryAction, Tip } from "./Action";
 import { daysUntil, formatDayLabel, formatDue } from "@/lib/clarityStats";
-import { Camera, Check, Sparkle, Trash, X } from "./icons";
+import { Check, Sparkle, Trash, X } from "./icons";
 
 const STATUSES: { id: ProjectStatus; label: string; tooltip: string }[] = [
   { id: "idea", label: "Idea", tooltip: "Written down, not started" },
   { id: "active", label: "Active", tooltip: "You're working on this now" },
   { id: "done", label: "Done", tooltip: "Finished — sets progress to 100%" },
 ];
-
-function GradeCard({ grade, index }: { grade: Project["grades"][number]; index: number }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: DUR.base, ease: EASE_OUT, delay: stagger(index) }}
-      className="rounded-[16px] border border-sand-line raise p-4"
-    >
-      <div className="flex items-center gap-3">
-        <span
-          className="readout grid h-11 w-11 flex-none place-items-center rounded-full text-[16px] font-bold text-[hsl(var(--primary-foreground))]"
-          style={{ background: "var(--spice-grad)" }}
-        >
-          {grade.score}
-        </span>
-        <div className="min-w-0 flex-1">
-          <div className="text-[14px] font-bold leading-[1.3]">{grade.headline}</div>
-          <div className="mt-0.5 text-[12px] text-muted-foreground">{formatDayLabel(grade.day)}</div>
-        </div>
-      </div>
-      <div className="mt-3.5 flex flex-col gap-2">
-        {GRADE_RUBRIC.map((r) => (
-          <div key={r.key} className="flex items-center gap-2.5">
-            <span className="w-[54px] flex-none text-[11.5px] font-semibold text-muted-foreground">
-              {r.label}
-            </span>
-            <span className="h-[5px] flex-1 overflow-hidden rounded-full bg-[hsl(var(--muted))]">
-              <motion.span
-                className="block h-full rounded-full"
-                style={{ background: "var(--spice-grad)" }}
-                initial={{ width: 0 }}
-                animate={{ width: `${grade.rubric[r.key] ?? 0}%` }}
-                transition={{ duration: DUR.slow, ease: EASE_OUT, delay: 0.05 }}
-              />
-            </span>
-            <span className="readout w-[26px] flex-none text-right text-[11.5px] font-bold text-spice-200">
-              {grade.rubric[r.key] ?? 0}
-            </span>
-          </div>
-        ))}
-      </div>
-      {grade.nextStep && (
-        <p className="mt-3.5 border-t border-sand-line pt-3 text-[13px] leading-[1.45] text-muted-foreground">
-          {grade.nextStep}
-        </p>
-      )}
-    </motion.div>
-  );
-}
 
 export default function ProjectSheet({
   project,
@@ -129,14 +78,16 @@ export default function ProjectSheet({
           : project.desc || "No description yet"
       }
       footer={
-        <PrimaryAction
-          onClick={() => actions.openGrader(project.id)}
-          tooltip="Photograph this project and have it scored"
-        >
-          <span className="flex items-center gap-2">
-            <Camera size={17} /> Grade this project
-          </span>
-        </PrimaryAction>
+        project.signature ? undefined : (
+          <PrimaryAction
+            onClick={() => actions.openSignoff(project.id)}
+            tooltip="Mark this finished and put your name to it"
+          >
+            <span className="flex items-center gap-2">
+              <Check size={17} /> I finished this
+            </span>
+          </PrimaryAction>
+        )
       }
     >
       {/* status */}
@@ -282,19 +233,18 @@ export default function ProjectSheet({
         </>
       )}
 
-      {/* grades */}
-      <div className="eyebrow eyebrow-muted mb-2.5 mt-6 flex items-center gap-1.5">
-        <Sparkle size={12} /> Grade history
-      </div>
-      {project.grades.length === 0 ? (
-        <div className="rounded-[14px] border border-dashed border-sand-line px-4 py-6 text-center text-[13.5px] leading-[1.45] text-muted-foreground">
-          Not graded yet. Photograph it and find out where it actually stands.
-        </div>
-      ) : (
-        <div className="flex flex-col gap-2.5">
-          {project.grades.map((g, i) => (
-            <GradeCard key={g.id + i} grade={g} index={i} />
-          ))}
+      {/* the signature */}
+      {project.signature && (
+        <div className="sietch-card-warm mt-6 p-4">
+          <div className="eyebrow mb-2 flex items-center gap-1.5">
+            <Sparkle size={12} /> Signed off
+          </div>
+          <div className="font-epigraph text-[24px] italic leading-tight">{project.signature}</div>
+          {project.signedOn && (
+            <div className="mt-1.5 text-[12px] text-muted-foreground">
+              {formatDayLabel(project.signedOn)}
+            </div>
+          )}
         </div>
       )}
 
@@ -306,7 +256,7 @@ export default function ProjectSheet({
               Delete &ldquo;{project.title}&rdquo;?
             </div>
             <div className="mt-1 text-[12.5px] text-muted-foreground">
-              {project.grades.length} grade{project.grades.length === 1 ? "" : "s"} and your notes go with it.
+Your notes and its deadline go with it.
             </div>
             <div className="mt-3 flex gap-2">
               <button

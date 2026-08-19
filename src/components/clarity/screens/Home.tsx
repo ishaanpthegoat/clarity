@@ -1,7 +1,9 @@
 ﻿// Clarity — Home. Collapsing header, the day's ring, and the cards that make up
 // a day. Every number on this screen comes out of the logged history.
-import { useRef } from "react";
+import { useCallback, useRef } from "react";
 import { useClarity, GOAL_BOUNDS, SESSION_BOUNDS } from "@/lib/clarityStore";
+import { useSwipeUpSync } from "@/lib/useSwipeUpSync";
+import SyncHint from "../SyncHint";
 import { QUOTES } from "@/lib/clarityData";
 import { categoryLabel } from "@/lib/feeds";
 import { greet, goalPhrase } from "@/lib/personalize";
@@ -21,14 +23,16 @@ import WeekChart from "../WeekChart";
 import ClaritySwitch from "../ClaritySwitch";
 import AppLogo from "../AppLogo";
 import DurationSlider from "../DurationSlider";
-import { IconAction, Tip } from "../Action";
+import { IconAction, PrimaryAction, Tip } from "../Action";
 import {
   ChevronLeft, ChevronRight, Gear, ArrowUpRight, Check, Flame, Shield, Search,
-  Snowflake, MoonIcon,
+  Snowflake,
 } from "../icons";
 
 export default function Home() {
   const { state, actions, derived } = useClarity();
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const sync = useSwipeUpSync(scrollRef, useCallback(() => actions.syncNow(), [actions]));
   const heroRef = useRef<HTMLDivElement>(null);
   const greetRef = useRef<HTMLDivElement>(null);
   const compactRef = useRef<HTMLDivElement>(null);
@@ -39,8 +43,6 @@ export default function Home() {
   const viewingToday = isToday(state.viewDate);
   const day = derived.viewedDay;
 
-  const checkedIn = !!derived.today.checkin;
-  const evening = new Date().getHours() >= 17;
   const goal = state.profile.goal ? goalPhrase(state.profile.goal) : null;
 
   const week = totalsFor(state.days, lastSevenDays());
@@ -164,6 +166,7 @@ export default function Home() {
       {/* ── scroll body ── */}
       <div
         onScroll={onScroll}
+        ref={scrollRef}
         className="clarity-scroll absolute inset-0 overflow-y-auto overflow-x-hidden px-[18px] pb-[118px] pt-[calc(178px_+_var(--safe-t))]"
       >
         <div ref={heroRef} style={{ transformOrigin: "top center" }}>
@@ -179,6 +182,69 @@ export default function Home() {
                 Locking holds until {state.schedule.end}.
               </span>
             </span>
+          </div>
+        )}
+
+        {/* today's focus — named right after the digest, shown here all day */}
+        {viewingToday && (
+          <button
+            onClick={actions.openFocusPrompt}
+            className="anim-cardUp sietch-card card-lift mb-3.5 w-full p-5 text-left"
+            style={{ animationDelay: ".04s" }}
+          >
+            <div className="mb-2 flex items-center justify-between">
+              <span className="eyebrow">Today&rsquo;s focus</span>
+              <span className="text-[12.5px] font-semibold text-muted-foreground">
+                {state.dayFocus ? "Change" : "Set it"}
+              </span>
+            </div>
+            {state.dayFocus ? (
+              <>
+                <div className="line-clamp-3 break-words text-[21px] font-bold leading-[1.25] tracking-[-0.015em]">
+                  {state.dayFocus}
+                </div>
+                <div className="mt-2 text-[13.5px] leading-[1.45] text-muted-foreground">
+                  Everything you lock away is protecting this.
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="text-[18px] font-bold leading-[1.3] text-muted-foreground">
+                  Name the one thing.
+                </div>
+                <div className="mt-2 flex items-center gap-1.5 text-[13.5px] font-semibold text-spice-400">
+                  Pick your focus <ArrowUpRight size={13} />
+                </div>
+              </>
+            )}
+          </button>
+        )}
+
+        {/* anything finished or past due that still needs your name on it */}
+        {derived.awaitingSignature.length > 0 && (
+          <div className="anim-cardUp sietch-card-warm mb-3.5 p-5" style={{ animationDelay: ".05s" }}>
+            <div className="eyebrow mb-2 flex items-center gap-1.5">
+              <Check size={12} /> Ready to sign off
+            </div>
+            <div className="text-[17px] font-bold leading-[1.3]">
+              {derived.awaitingSignature[0].title}
+            </div>
+            <p className="mt-1.5 text-[13.5px] leading-[1.45] text-muted-foreground">
+              {derived.awaitingSignature[0].status === "done"
+                ? "You marked this done. Put your name to it and it's closed."
+                : "This is due. If it's finished, sign it off."}
+              {derived.awaitingSignature.length > 1 &&
+                ` ${derived.awaitingSignature.length - 1} more waiting.`}
+            </p>
+            <div className="mt-3.5">
+              <PrimaryAction
+                onClick={() => actions.openSignoff(derived.awaitingSignature[0].id)}
+                tooltip="Sign this project off"
+                className="h-[46px] text-[14.5px]"
+              >
+                Sign it off
+              </PrimaryAction>
+            </div>
           </div>
         )}
 
@@ -306,31 +372,6 @@ export default function Home() {
             />
           </div>
         </div>
-
-        {/* check-in — off the tab bar, surfaced here when the day is old enough
-            to have something worth reflecting on */}
-        {viewingToday && (evening || checkedIn) && (
-          <button
-            onClick={() => actions.go("checkin")}
-            className="anim-cardUp sietch-card card-lift mb-3.5 flex w-full items-center gap-3.5 p-5 text-left"
-            style={{ animationDelay: ".088s" }}
-          >
-            <span className="grid h-11 w-11 flex-none place-items-center rounded-[13px] border border-spice-400/30 bg-spice-400/[0.10] text-spice-300">
-              {checkedIn ? <Check size={18} /> : <MoonIcon size={18} />}
-            </span>
-            <span className="flex-1">
-              <span className="block text-[15.5px] font-bold">
-                {checkedIn ? "Today's checked in" : "Close out the day"}
-              </span>
-              <span className="block text-[13.5px] leading-[1.4] text-muted-foreground">
-                {checkedIn
-                  ? "Tap to update how it actually went."
-                  : "A minute of reflection, then it's logged."}
-              </span>
-            </span>
-            <span className="text-spice-300"><ArrowUpRight size={17} /></span>
-          </button>
-        )}
 
         {/* this week's projects */}
         <button
@@ -462,6 +503,8 @@ export default function Home() {
         >
           Start a {state.sessionMinutes}-minute session
         </button>
+
+        <SyncHint progress={sync.progress} syncing={sync.syncing} />
       </div>
     </div>
   );

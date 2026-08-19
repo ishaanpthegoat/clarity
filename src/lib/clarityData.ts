@@ -40,20 +40,6 @@ export const SEED_APPS: AppIcon[] = ["ig", "tt", "yt", "sc"].map((id) => ({
 
 export type ProjectStatus = "idea" | "active" | "done";
 
-export interface ProjectGrade {
-  id: string;
-  /** ISO day the shot was graded. */
-  day: string;
-  score: number;
-  headline: string;
-  /** Rubric name → 0-100. */
-  rubric: Record<string, number>;
-  strengths: string[];
-  nextStep: string;
-  /** Object URL of the photo. Not persisted — it dies with the tab. */
-  photo?: string;
-}
-
 export interface Project {
   id: string;
   title: string;
@@ -63,11 +49,14 @@ export interface Project {
   progress: number;
   /** Free-text working notes. */
   notes: string;
-  grades: ProjectGrade[];
   /** Set when adopted from the public feed, so credit is visible. */
   adoptedFrom?: string;
   /** ISO day it's due. Undefined means no deadline was set. */
   dueDate?: string;
+  /** What the user typed to sign it off. Its presence means signed. */
+  signature?: string;
+  /** ISO day the signature was given — may be earlier than the due date. */
+  signedOn?: string;
 }
 
 const seedProject = (
@@ -76,7 +65,7 @@ const seedProject = (
   desc: string,
   status: ProjectStatus = "idea",
   progress = 0,
-): Project => ({ id, title, desc, status, progress, notes: "", grades: [] });
+): Project => ({ id, title, desc, status, progress, notes: "" });
 
 export const SEED_PROJECTS: Project[] = [
   seedProject("p1", "Finish the Q3 deck", "Draft, design, and send it this week.", "active", 40),
@@ -86,14 +75,6 @@ export const SEED_PROJECTS: Project[] = [
   seedProject("p5", "Set up a money tracker", "Know where it actually goes."),
   seedProject("p6", "Learn one new skill", "Small reps, every day."),
   seedProject("p7", "Clear the inbox", "Get to zero and stay there."),
-];
-
-/** The rubric the grader scores against. Shown before you shoot, so the bar is known. */
-export const GRADE_RUBRIC = [
-  { key: "craft", label: "Craft", hint: "How finished does the execution look?" },
-  { key: "clarity", label: "Clarity", hint: "Can a stranger tell what it is?" },
-  { key: "progress", label: "Progress", hint: "How far from done?" },
-  { key: "ambition", label: "Ambition", hint: "Is the scope worth the week?" },
 ];
 
 // ── To-dos ──────────────────────────────────────────────────────────────────

@@ -37,9 +37,9 @@ The repeated form is the **spice ring**: the distance you've covered is a solid 
 - **Springboard** — a faux home screen showing your locked apps
 - **Projects** — pick 3 to protect each week
 - **To-do** — checking items moves the Tasks ring
-- **AI Review** — snap your work and get a quick read on where it stands
+- **What Clarity knows** — every fact the app holds about you, editable and deletable
 - **Daily Read** — read an article, then record yourself explaining it back
-- **Evening check-in** — mood, reflection, and what you made time for, saved onto the day
+- **Today's focus** — named right after the digest, when you have just spent two minutes on everyone else's priorities
 - **Light and dark** — Arrakis at night, or midday glare
 
 ### Added in the second pass
@@ -50,7 +50,7 @@ The repeated form is the **spice ring**: the distance you've covered is a solid 
 - **Session length up to 7 hours** — a slider with detents and haptics, replacing four preset chips that capped out at 90 minutes
 - **Daily goal in ten-minute steps** — 10 minutes to 12 hours
 - **Sectioned Projects tab** — *This week*, *All* and *Grade*, with the public ideas feed deliberately kept on the main page
-- **Project grader** — photograph what you've built and have it scored against a four-part rubric, with one concrete next step
+- **Project sign-off** — a due date per project, closed out by typing your own name
 - **Project workspace** — status, progress, working notes, linked to-dos and the full grade history, in a drag-dismissible sheet
 - **Public ideas** — procedural avatars, cheers, and adopting someone else's idea straight into your own projects
 - **Daily Read as its own tab** — opens on today's article, and "record my understanding" anywhere hands off into it already recording
@@ -143,3 +143,25 @@ public/clarity/           # brand assets (icon, aurora, onboarding heroes)
 ---
 
 <div align="center"><sub>Built with Claude Code.</sub></div>
+
+## What's new in this pass
+
+Built on top of the digest redesign, not instead of it:
+
+- **What Clarity knows** — a tab showing every fact behind your digest: name, goal,
+  followed categories, the specifics inside each, and what you asked for less of.
+  All editable, all deletable. An app that models you and never shows you the model
+  is doing something worse than being wrong.
+- **The grader and the check-in are gone.** Photographing a project to be scored, and
+  the evening check-in, both asked for work the app did not need.
+- **Project sign-off** — due dates now end in a signature. On the day, or whenever you
+  finish early, you type your own name. A checkbox is too cheap for finishing something.
+- **Sessions lock the apps themselves.** Starting a session turns locking on whether or
+  not the toggle was set — sitting down to focus with your distractions reachable was
+  the exact failure the app exists to prevent.
+- **A day opens on a floor, not a zero.** Yesterday's earned score maps onto a 5–25
+  starting point for today. It reads the *earned* figure, so the floor cannot compound.
+- **Swipe past the bottom of a page to sync it**, with a pull indicator. Pull-to-refresh
+  upside down, because the top of every screen already owns the downward drag.
+- **The digest ends by asking what today is about.** Your weekly projects are offered as
+  one tap each, and the answer labels the sessions you run that day.

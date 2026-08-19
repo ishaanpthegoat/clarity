@@ -260,11 +260,6 @@ test("projects is sectioned, ideas stay on the main page, grading runs", async (
   await page.waitForTimeout(400);
   await frame(page).screenshot({ path: path.join(SHOTS, "r-projects-all.png") });
 
-  await page.getByRole("tab", { name: "Grade" }).click();
-  await page.waitForTimeout(400);
-  await expect(page.getByText("Get your project graded")).toBeVisible();
-  await frame(page).screenshot({ path: path.join(SHOTS, "r-projects-grade.png") });
-
   expect(errors).toEqual([]);
 });
 

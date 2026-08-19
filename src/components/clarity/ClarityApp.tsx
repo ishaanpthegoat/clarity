@@ -5,6 +5,8 @@ import ErrorBoundary from "./ErrorBoundary";
 import StatusBar from "./StatusBar";
 import TabBar from "./TabBar";
 import CommandPalette from "./CommandPalette";
+import SignoffSheet from "./SignoffSheet";
+import FocusPrompt from "./FocusPrompt";
 import Splash from "./screens/Splash";
 import Onboarding from "./screens/Onboarding";
 import Home from "./screens/Home";
@@ -13,14 +15,12 @@ import Block from "./screens/Block";
 import Settings from "./screens/Settings";
 import Projects from "./screens/Projects";
 import Todos from "./screens/Todos";
-import Review from "./screens/Review";
-import Checkin from "./screens/Checkin";
 import Springboard from "./screens/Springboard";
 import Paywall from "./screens/Paywall";
 import Digest from "./screens/Digest";
 import Insights from "./screens/Insights";
 import Milestones from "./screens/Milestones";
-import ProjectGrade from "./screens/ProjectGrade";
+import Knows from "./screens/Knows";
 
 function Screens() {
   const { state } = useClarity();
@@ -33,14 +33,12 @@ function Screens() {
     case "settings": return <Settings />;
     case "projects": return <Projects />;
     case "todos": return <Todos />;
-    case "submit": return <Review />;
-    case "checkin": return <Checkin />;
     case "spring": return <Springboard />;
     case "paywall": return <Paywall />;
     case "digest": return <Digest />;
     case "insights": return <Insights />;
     case "milestones": return <Milestones />;
-    case "grade": return <ProjectGrade />;
+    case "knows": return <Knows />;
     default: return <Home />;
   }
 }
@@ -59,7 +57,7 @@ function useShortcuts() {
       switch (e.key.toLowerCase()) {
         case "h": actions.go("home"); break;
         case "f": actions.startFocus(); break;
-        case "c": actions.go("checkin"); break;
+        case "k": actions.go("knows"); break;
         case "l": actions.toggleLock(); break;
         case "i": actions.go("insights"); break;
         case "r": actions.go("digest"); break;
@@ -92,6 +90,8 @@ function Device() {
         <Screens />
         <TabBar />
         <CommandPalette />
+        <SignoffSheet />
+        <FocusPrompt />
         {!onSplash && (
           <div
             className="pointer-events-none absolute left-1/2 z-[90] h-[5px] w-[134px] -translate-x-1/2 rounded-[3px] bg-foreground/30"

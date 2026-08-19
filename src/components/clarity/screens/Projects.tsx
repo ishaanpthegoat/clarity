@@ -5,27 +5,28 @@
 // one deliberate exception: the public ideas feed stays on the main page rather
 // than behind a tab, because it is the thing that gives you something to pick
 // *from* — burying it would leave an empty picker staring at anyone new.
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useClarity } from "@/lib/clarityStore";
+import { useSwipeUpSync } from "@/lib/useSwipeUpSync";
+import SyncHint from "../SyncHint";
 import { daysUntil, formatDue } from "@/lib/clarityStats";
 import { PUBLIC_IDEAS, TRENDING, type Project, type ProjectStatus } from "@/lib/clarityData";
 import { runOptimistic, simulateWrite } from "@/lib/optimistic";
 import { DUR, EASE_OUT, SPRING, stagger } from "@/lib/motion";
-import { ChipAction, IconAction, PrimaryAction, Tip } from "../Action";
+import { ChipAction, PrimaryAction, Tip } from "../Action";
 import { IdeaFeedSkeleton } from "../Skeletons";
 import Avatar from "../Avatar";
 import ProjectSheet from "../ProjectSheet";
 import {
-  ArrowUpRight, Camera, Check, HeartFilled, Plus, Sparkle, Target, Users,
+  Check, HeartFilled, Plus, Target, Users,
 } from "../icons";
 
-type SectionId = "week" | "all" | "grade";
+type SectionId = "week" | "all";
 
 const SECTIONS: { id: SectionId; label: string; tooltip: string }[] = [
   { id: "week", label: "This week", tooltip: "The 3 projects you're protecting right now" },
   { id: "all", label: "All", tooltip: "Every project you've written down" },
-  { id: "grade", label: "Grade", tooltip: "Photograph a project and have it scored" },
 ];
 
 const STATUS_STYLE: Record<ProjectStatus, { label: string; className: string }> = {
@@ -105,7 +106,6 @@ function ProgressBar({ value }: { value: number }) {
 /** One project in the "All" list — opens its workspace sheet. */
 function ProjectRow({ project, index }: { project: Project; index: number }) {
   const { actions } = useClarity();
-  const lastGrade = project.grades[0];
 
   return (
     <motion.button
@@ -133,7 +133,7 @@ function ProjectRow({ project, index }: { project: Project; index: number }) {
         <span className="readout flex-none text-[12px] font-bold text-spice-200">{project.progress}%</span>
       </div>
 
-      {(lastGrade || project.adoptedFrom || project.dueDate) && (
+      {(project.signature || project.adoptedFrom || project.dueDate) && (
         <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-sand-line pt-3">
           {project.dueDate && (
             <span
@@ -153,9 +153,9 @@ function ProjectRow({ project, index }: { project: Project; index: number }) {
               {formatDue(project.dueDate)}
             </span>
           )}
-          {lastGrade && (
+          {project.signature && (
             <span className="flex items-center gap-1.5 rounded-full border border-spice-400/25 bg-spice-400/[0.08] px-2.5 py-1 text-[11.5px] font-semibold text-spice-200">
-              <Sparkle size={11} /> Graded {lastGrade.score}/100
+              <Check size={11} /> Signed by {project.signature}
             </span>
           )}
           {project.adoptedFrom && (
@@ -449,99 +449,18 @@ function AllSection() {
   );
 }
 
-/** Section 3 — photograph a project and have it graded. */
-function GradeSection() {
-  const { state, actions } = useClarity();
-  const graded = state.projects.filter((p) => p.grades.length > 0);
-
-  return (
-    <>
-      <div className="sietch-card-warm mt-6 p-5">
-        <div className="flex items-center gap-3">
-          <span className="spice-grad grid h-11 w-11 flex-none place-items-center rounded-[13px] text-[hsl(var(--primary-foreground))]">
-            <Camera size={20} />
-          </span>
-          <div className="flex-1">
-            <div className="text-[16px] font-bold">Get your project graded</div>
-            <div className="mt-0.5 text-[13px] leading-[1.4] text-muted-foreground">
-              Photograph what you've built. It comes back scored, with the one thing to fix next.
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="mb-3 mt-6 text-[11px] font-bold tracking-[2px] text-muted-foreground">
-        PICK WHAT TO GRADE
-      </div>
-      <div className="flex flex-col gap-2.5">
-        {state.projects.slice(0, 10).map((p, i) => {
-          const last = p.grades[0];
-          return (
-            <motion.button
-              key={p.id}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: DUR.base, ease: EASE_OUT, delay: stagger(i) }}
-              onClick={() => actions.openGrader(p.id)}
-              aria-label={`Grade ${p.title}`}
-              className="sietch-card card-lift flex w-full items-center gap-3 p-4 text-left"
-            >
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-[15.5px] font-bold">{p.title}</span>
-                <span className="mt-[3px] block text-[12.5px] text-muted-foreground">
-                  {last ? `Last graded ${last.score}/100` : "Never graded"}
-                </span>
-              </span>
-              <span className="flex flex-none items-center gap-1.5 rounded-[11px] border border-spice-400/30 bg-spice-400/[0.1] px-3 py-2 text-[12.5px] font-semibold text-spice-200">
-                <Camera size={13} /> Shoot
-              </span>
-            </motion.button>
-          );
-        })}
-      </div>
-
-      {graded.length > 0 && (
-        <>
-          <div className="mb-3 mt-8 text-[11px] font-bold tracking-[2px] text-muted-foreground">
-            RECENT GRADES
-          </div>
-          <div className="flex flex-col gap-2.5">
-            {graded.map((p) => (
-              <button
-                key={p.id}
-                onClick={() => actions.openProject(p.id)}
-                aria-label={`See grade history for ${p.title}`}
-                className="sietch-card flex w-full items-center gap-3.5 p-4 text-left"
-              >
-                <span
-                  className="readout grid h-12 w-12 flex-none place-items-center rounded-full text-[17px] font-bold text-[hsl(var(--primary-foreground))]"
-                  style={{ background: "var(--spice-grad)" }}
-                >
-                  {p.grades[0].score}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[15px] font-bold">{p.title}</span>
-                  <span className="mt-0.5 line-clamp-1 block text-[12.5px] text-muted-foreground">
-                    {p.grades[0].headline}
-                  </span>
-                </span>
-                <ArrowUpRight size={16} />
-              </button>
-            ))}
-          </div>
-        </>
-      )}
-    </>
-  );
-}
-
 export default function Projects() {
   const { state, actions, derived } = useClarity();
   const [section, setSection] = useState<SectionId>("week");
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const sync = useSwipeUpSync(scrollRef, useCallback(() => actions.syncNow(), [actions]));
 
   return (
     <div className="absolute inset-0 flex flex-col bg-background">
-      <div className="clarity-scroll flex-1 overflow-y-auto px-[22px] pb-[118px] pt-[calc(78px_+_var(--safe-t))]">
+      <div
+        ref={scrollRef}
+        className="clarity-scroll flex-1 overflow-y-auto px-[22px] pb-[118px] pt-[calc(78px_+_var(--safe-t))]"
+      >
         <div className="flex items-start justify-between gap-3">
           <div>
             <h1 className="text-[29px] font-extrabold leading-[1.15] tracking-[-0.8px]">Projects</h1>
@@ -549,13 +468,6 @@ export default function Projects() {
               Pick 3 to protect this week. Small enough to finish, big enough to matter.
             </p>
           </div>
-          <IconAction
-            icon={<Sparkle size={16} />}
-            label="Grade"
-            tooltip="Photograph a project and have it scored"
-            onClick={() => setSection("grade")}
-            active={section === "grade"}
-          />
         </div>
 
         <SectionTabs value={section} onChange={setSection} />
@@ -572,9 +484,10 @@ export default function Projects() {
           >
             {section === "week" && <WeekSection />}
             {section === "all" && <AllSection />}
-            {section === "grade" && <GradeSection />}
           </motion.div>
         </AnimatePresence>
+
+        <SyncHint progress={sync.progress} syncing={sync.syncing} />
       </div>
 
       <ProjectSheet

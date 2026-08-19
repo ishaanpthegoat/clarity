@@ -19,24 +19,22 @@ import {
   SEED_TODOS,
   type AppIcon,
   type Project,
-  type ProjectGrade,
   type ProjectStatus,
   type Todo,
 } from "./clarityData";
 import {
   addDays,
+  carryoverFrom,
   clarityScore,
   computeStreak,
   dateKey,
   emptyDay,
   getDay,
-  type Checkin,
   type ClarityScore,
   type DayLog,
   type DayMap,
   type Session,
 } from "./clarityStats";
-import { gradeProject } from "./grader";
 import { cheer, note, haptic } from "./feedback";
 import { simulateWrite } from "./optimistic";
 import type { UserProfile } from "./aiService";
@@ -53,17 +51,13 @@ export type ClarityView =
   | "settings"
   | "projects"
   | "todos"
-  | "submit"
-  | "checkin"
   | "spring"
   | "paywall"
   | "digest"
   | "insights"
   | "milestones"
-  | "grade";
+  | "knows";
 
-export type SubmitStage = "camera" | "analyzing" | "result";
-export type GradeStage = "intro" | "camera" | "grading" | "result";
 export type ThemeMode = "dark" | "light";
 
 export interface LockSchedule {
@@ -88,12 +82,6 @@ export interface ClarityState {
   blockedReturn: ClarityView;
   ringIndex: number;
   quoteIndex: number;
-  submitStage: SubmitStage;
-  submitScore: number | null;
-  mood: number | null;
-  dayGo: string | null;
-  activities: string[];
-  checkinNote: string;
   locking: boolean;
   blockedApp: AppIcon | null;
 
@@ -124,12 +112,8 @@ export interface ClarityState {
   adopted: string[];
   /** False until the ideas feed has "arrived" — drives its skeleton. */
   ideasLoaded: boolean;
-
-  // ── project grader ──
-  gradeStage: GradeStage;
-  gradeProjectId: string | null;
-  gradePhoto: string | null;
-  gradeResult: ProjectGrade | null;
+  /** The project whose sign-off sheet is open, if any. */
+  signingProjectId: string | null;
 
   // ── preferences ──
   /** minutes a new session runs for */
@@ -156,6 +140,12 @@ export interface ClarityState {
   digestLoading: boolean;
   /** Day-keys whose digest has been marked read. */
   digestRead: string[];
+  /** What the user said today is about, asked for right after the digest. */
+  dayFocus: string;
+  /** The day `dayFocus` belongs to — it expires rather than carrying over. */
+  dayFocusDay: string;
+  /** True while the "what's today about?" sheet is up. */
+  focusPromptOpen: boolean;
 
   // ── transient UI ──
   paletteOpen: boolean;
@@ -168,7 +158,7 @@ type Persisted = Pick<
   ClarityState,
   | "locking" | "apps" | "projects" | "selProj" | "todos" | "profile"
   | "sessionMinutes" | "goalMinutes" | "theme" | "schedule" | "strictDefault"
-  | "onboarded" | "isPro" | "digestRead" | "days" | "sessions"
+  | "onboarded" | "isPro" | "digestRead" | "dayFocus" | "dayFocusDay" | "days" | "sessions"
   | "cheered" | "adopted" | "freezeDays"
 >;
 
@@ -217,9 +207,10 @@ function normalizeProjects(saved: unknown): Project[] {
       status: raw.status ?? "idea",
       progress: typeof raw.progress === "number" ? raw.progress : 0,
       notes: raw.notes ?? "",
-      grades: Array.isArray(raw.grades) ? raw.grades : [],
       adoptedFrom: raw.adoptedFrom,
       dueDate: raw.dueDate,
+      signature: raw.signature,
+      signedOn: raw.signedOn,
     } satisfies Project;
   });
   return projects.length ? projects : SEED_PROJECTS;
@@ -260,12 +251,6 @@ function makeInitial(): ClarityState {
     blockedReturn: "home",
     ringIndex: 0,
     quoteIndex: 0,
-    submitStage: "camera",
-    submitScore: null,
-    mood: todayLog.checkin?.mood ?? null,
-    dayGo: todayLog.checkin?.dayGo ?? null,
-    activities: todayLog.checkin?.activities ?? [],
-    checkinNote: todayLog.checkin?.note ?? "",
     locking: saved.locking ?? true,
     blockedApp: null,
 
@@ -289,11 +274,7 @@ function makeInitial(): ClarityState {
     cheered: saved.cheered ?? [],
     adopted: saved.adopted ?? [],
     ideasLoaded: false,
-
-    gradeStage: "intro",
-    gradeProjectId: null,
-    gradePhoto: null,
-    gradeResult: null,
+    signingProjectId: null,
 
     sessionMinutes: saved.sessionMinutes ?? 25,
     goalMinutes: saved.goalMinutes ?? 180,
@@ -312,6 +293,11 @@ function makeInitial(): ClarityState {
     digest: null,
     digestLoading: false,
     digestRead: saved.digestRead ?? [],
+    // Yesterday's answer is not today's. It expires with the day rather than
+    // sitting there looking current.
+    dayFocus: saved.dayFocusDay === today ? (saved.dayFocus ?? "") : "",
+    dayFocusDay: saved.dayFocusDay ?? "",
+    focusPromptOpen: false,
 
     paletteOpen: false,
   };
@@ -352,13 +338,6 @@ export interface ClarityActions {
   cycleRing: (d: number) => void;
   setRing: (i: number) => void;
   nextQuote: () => void;
-  setMood: (i: number) => void;
-  toggleActivity: (k: string) => void;
-  setDayGo: (v: string) => void;
-  setCheckinNote: (v: string) => void;
-  capturePhoto: () => void;
-  resetSubmit: () => void;
-  saveCheckin: () => void;
   openApp: (app: AppIcon) => void;
   /** the user backed off at the block screen — the outcome we want */
   blockHold: () => void;
@@ -387,6 +366,9 @@ export interface ClarityActions {
   // ── daily digest ──
   openDigest: () => void;
   markDigestRead: () => void;
+  setDayFocus: (text: string) => void;
+  dismissFocusPrompt: () => void;
+  openFocusPrompt: () => void;
 
   // ── projects workspace ──
   openProject: (id: string | null) => void;
@@ -397,16 +379,12 @@ export interface ClarityActions {
   /** ISO day, or "" to clear the date. */
   setProjectDueDate: (id: string, dueDate: string) => void;
   deleteProject: (id: string) => void;
+  openSignoff: (id: string) => void;
+  signProject: (id: string, signature: string) => void;
+  dismissSignoff: () => void;
   cheerIdea: (id: string) => void;
   adoptIdea: (id: string) => void;
   loadIdeas: () => void;
-
-  // ── grader ──
-  openGrader: (projectId: string) => void;
-  setGradePhoto: (dataUrl: string) => void;
-  runGrade: () => void;
-  resetGrade: () => void;
-  closeGrade: () => void;
 
   toggleTodo: (id: string) => void;
   addTodo: () => void;
@@ -415,6 +393,12 @@ export interface ClarityActions {
 
   // preferences
   setProfile: (patch: Partial<UserProfile>) => void;
+  /** Replace the followed-category list outright — a merge could not remove. */
+  setInterests: (interests: string[]) => void;
+  /** Wipe everything Clarity knows and send them back through onboarding. */
+  forgetProfile: () => void;
+  /** Re-read what is on disk and rebuild anything derived from it. */
+  syncNow: () => void;
   setSessionMinutes: (m: number) => void;
   setGoalMinutes: (m: number) => void;
   setTheme: (t: ThemeMode) => void;
@@ -438,6 +422,10 @@ export interface ClarityDerived {
   scheduleOn: boolean;
   /** the project whose sheet is open, if any */
   openProject: Project | null;
+  /** the project whose sign-off sheet is open, if any */
+  signingProject: Project | null;
+  /** finished-or-due projects still waiting for a name on them */
+  awaitingSignature: Project[];
   freezeAvailable: boolean;
   /** screens that own the whole frame hide the tab bar */
   tabBarHidden: boolean;
@@ -457,7 +445,7 @@ const ClarityContext = createContext<ClarityContextValue | null>(null);
 
 /** Views that take the whole frame — no tab bar over them. */
 const FULLSCREEN_VIEWS: ClarityView[] = [
-  "splash", "onboarding", "focus", "blocked", "spring", "paywall", "grade",
+  "splash", "onboarding", "focus", "blocked", "spring", "paywall",
 ];
 
 export function ClarityProvider({ children }: { children: ReactNode }) {
@@ -487,6 +475,8 @@ export function ClarityProvider({ children }: { children: ReactNode }) {
       onboarded: state.onboarded,
       isPro: state.isPro,
       digestRead: state.digestRead,
+      dayFocus: state.dayFocus,
+      dayFocusDay: state.dayFocusDay,
       days: state.days,
       sessions: state.sessions,
       cheered: state.cheered,
@@ -502,7 +492,8 @@ export function ClarityProvider({ children }: { children: ReactNode }) {
     state.locking, state.apps, state.projects, state.selProj,
     state.todos, state.profile, state.sessionMinutes, state.goalMinutes,
     state.theme, state.schedule, state.strictDefault,
-    state.onboarded, state.isPro, state.digestRead, state.days, state.sessions,
+    state.onboarded, state.isPro, state.digestRead, state.dayFocus, state.dayFocusDay,
+    state.days, state.sessions,
     state.cheered, state.adopted, state.freezeDays,
   ]);
 
@@ -552,18 +543,6 @@ export function ClarityProvider({ children }: { children: ReactNode }) {
     const id = window.setInterval(tick, 30_000);
     return () => window.clearInterval(id);
   }, [state.schedule]);
-
-  // ── AI review: analyzing → result ──
-  const analyzeRef = useRef<number | null>(null);
-  useEffect(() => {
-    if (state.submitStage !== "analyzing") return;
-    analyzeRef.current = window.setTimeout(() => {
-      patch({ submitStage: "result", submitScore: 87 });
-    }, 1700);
-    return () => {
-      if (analyzeRef.current) window.clearTimeout(analyzeRef.current);
-    };
-  }, [state.submitStage, patch]);
 
   // ── daily digest ──
   // Built once per day. The heavy half (summarising each category) is cached by
@@ -625,7 +604,7 @@ export function ClarityProvider({ children }: { children: ReactNode }) {
         startedAt: s.sessionStartedAt,
         planned: Math.round(s.focusTotal / 60),
         focusedSeconds,
-        task: activeProject?.title ?? "",
+        task: s.dayFocus || activeProject?.title || "",
         completed,
         strict: s.strict,
         note: s.sessionNote.trim() || undefined,
@@ -668,30 +647,6 @@ export function ClarityProvider({ children }: { children: ReactNode }) {
       cycleRing: (d) => update((s) => ({ ringIndex: (s.ringIndex + d + 3) % 3 })),
       setRing: (i) => patch({ ringIndex: i }),
       nextQuote: () => update((s) => ({ quoteIndex: s.quoteIndex + 1 })),
-      setMood: (i) => patch({ mood: i }),
-      toggleActivity: (k) =>
-        update((s) => ({
-          activities: s.activities.includes(k)
-            ? s.activities.filter((x) => x !== k)
-            : [...s.activities, k],
-        })),
-      setDayGo: (v) => patch({ dayGo: v }),
-      setCheckinNote: (v) => patch({ checkinNote: v }),
-      capturePhoto: () => patch({ submitStage: "analyzing" }),
-      resetSubmit: () => patch({ submitStage: "camera", submitScore: null }),
-
-      saveCheckin: () =>
-        setState((s) => {
-          const checkin: Checkin = {
-            mood: s.mood ?? 2,
-            dayGo: s.dayGo ?? "",
-            activities: s.activities,
-            note: s.checkinNote,
-          };
-          cheer("Checked in", "That's the day closed out. Rest well.");
-          return { ...s, days: withDay(s, dateKey(), { checkin }), view: "home" };
-        }),
-
       openApp: (app) =>
         update((s) => {
           if (!s.locking || !app.locked) return {};
@@ -746,9 +701,15 @@ export function ClarityProvider({ children }: { children: ReactNode }) {
         setState((s) => {
           const mins = opts?.minutes ?? s.sessionMinutes;
           const t = Math.max(60, mins * 60);
+          // Starting a session turns locking on whether or not the toggle was
+          // set. Sitting down to focus with your distractions still reachable
+          // is the exact failure the app exists to prevent, and asking people
+          // to remember two switches instead of one was the bug.
+          if (!s.locking) note("Apps locked", "Locking switched on for this session.");
           return {
             ...s,
             view: "focus",
+            locking: true,
             focusTotal: t,
             focusLeft: t,
             running: true,
@@ -822,8 +783,22 @@ export function ClarityProvider({ children }: { children: ReactNode }) {
           const key = s.digest?.day ?? todayKey();
           if (s.digestRead.includes(key)) return {};
           cheer("Caught up", "That's the news handled in under two minutes.");
-          return { digestRead: [...s.digestRead, key] };
+          // Straight into naming the day. You have just spent two minutes on
+          // everyone else's priorities; this is the moment to name your own.
+          const askForFocus = !s.dayFocus;
+          return { digestRead: [...s.digestRead, key], focusPromptOpen: askForFocus };
         }),
+
+      setDayFocus: (text) =>
+        update(() => {
+          const clean = text.trim();
+          if (!clean) return { focusPromptOpen: false };
+          cheer("That's today", clean);
+          return { dayFocus: clean, dayFocusDay: dateKey(), focusPromptOpen: false };
+        }),
+
+      dismissFocusPrompt: () => patch({ focusPromptOpen: false }),
+      openFocusPrompt: () => patch({ focusPromptOpen: true }),
 
       // ── projects workspace ──
       openProject: (id) => patch({ openProjectId: id }),
@@ -839,18 +814,43 @@ export function ClarityProvider({ children }: { children: ReactNode }) {
             status: "idea",
             progress: 0,
             notes: "",
-            grades: [],
           };
           cheer("Project added", "Pick it for the week when you're ready.");
           return { ...s, projects: [project, ...s.projects] };
         }),
 
       setProjectStatus: (id, status) =>
-        update((s) => ({
-          projects: s.projects.map((p) =>
-            p.id === id ? { ...p, status, progress: status === "done" ? 100 : p.progress } : p,
-          ),
-        })),
+        update((s) => {
+          const target = s.projects.find((p) => p.id === id);
+          // Finishing early is the same moment as finishing on time — both end
+          // with you putting your name to it.
+          const needsSigning = status === "done" && target && !target.signature;
+          return {
+            projects: s.projects.map((p) =>
+              p.id === id ? { ...p, status, progress: status === "done" ? 100 : p.progress } : p,
+            ),
+            signingProjectId: needsSigning ? id : s.signingProjectId,
+          };
+        }),
+
+      openSignoff: (id) => patch({ signingProjectId: id }),
+
+      signProject: (id, signature) =>
+        update((s) => {
+          const clean = signature.trim();
+          if (!clean) return {};
+          cheer("Signed off", "That one's yours. On the record.");
+          return {
+            projects: s.projects.map((p) =>
+              p.id === id
+                ? { ...p, signature: clean, signedOn: dateKey(), status: "done", progress: 100 }
+                : p,
+            ),
+            signingProjectId: null,
+          };
+        }),
+
+      dismissSignoff: () => patch({ signingProjectId: null }),
 
       setProjectProgress: (id, progress) =>
         update((s) => ({
@@ -907,7 +907,6 @@ export function ClarityProvider({ children }: { children: ReactNode }) {
             status: "idea",
             progress: 0,
             notes: "",
-            grades: [],
             adoptedFrom: idea.author,
           };
           cheer(`Added "${idea.idea}"`, `From ${idea.author}. It's in your projects now.`);
@@ -917,20 +916,6 @@ export function ClarityProvider({ children }: { children: ReactNode }) {
       loadIdeas: () => patch({ ideasLoaded: true }),
 
       // ── grader ──
-      openGrader: (projectId) =>
-        patch({
-          view: "grade",
-          gradeProjectId: projectId,
-          gradeStage: "intro",
-          gradePhoto: null,
-          gradeResult: null,
-        }),
-      setGradePhoto: (dataUrl) => patch({ gradePhoto: dataUrl, gradeStage: "camera" }),
-      runGrade: () => patch({ gradeStage: "grading" }),
-      resetGrade: () => patch({ gradeStage: "camera", gradePhoto: null, gradeResult: null }),
-      closeGrade: () =>
-        patch({ view: "projects", gradeStage: "intro", gradePhoto: null, gradeResult: null }),
-
       toggleProject: (id) =>
         update((s) => {
           if (s.selProj.includes(id)) return { selProj: s.selProj.filter((x) => x !== id) };
@@ -1011,6 +996,50 @@ export function ClarityProvider({ children }: { children: ReactNode }) {
 
       // ── preferences ──
       setProfile: (p) => update((s) => ({ profile: { ...s.profile, ...p } })),
+
+      setInterests: (interests) =>
+        update((s) => {
+          // Drop the specifics for anything no longer followed, so an interest
+          // added back later asks again rather than silently reusing an answer
+          // from before.
+          const specifics: Record<string, string> = {};
+          for (const id of interests) {
+            if (s.profile.specifics[id]) specifics[id] = s.profile.specifics[id];
+          }
+          return { profile: { ...s.profile, interests, specifics } };
+        }),
+
+      // Swiping past the bottom of a page lands here. State lives in this tab,
+      // so the useful part of a "reload" is picking up writes another tab made
+      // and dropping anything cached on top of them — which means the digest,
+      // the one thing the app holds that it did not just compute.
+      syncNow: () =>
+        update(() => {
+          const disk = loadPersisted();
+          haptic(12);
+          cheer("Synced", "Up to date with everything on this device.");
+          return {
+            apps: normalizeApps(disk.apps),
+            projects: normalizeProjects(disk.projects),
+            todos: disk.todos ?? SEED_TODOS,
+            selProj: disk.selProj ?? [],
+            days: disk.days ?? {},
+            sessions: disk.sessions ?? [],
+            freezeDays: disk.freezeDays ?? [],
+            cheered: disk.cheered ?? [],
+            adopted: disk.adopted ?? [],
+            profile: { ...EMPTY_PROFILE, ...(disk.profile ?? {}) },
+            digest: null,
+          };
+        }),
+
+      forgetProfile: () =>
+        update(() => {
+          note("Cleared", "Clarity has forgotten what it knew.");
+          // The digest is written from the profile, so it goes too rather than
+          // sitting there as a leftover of a person the app no longer knows.
+          return { profile: EMPTY_PROFILE, digest: null, onboarded: false, view: "onboarding" };
+        }),
       setSessionMinutes: (m) =>
         update((s) => {
           const mins = Math.max(
@@ -1088,43 +1117,6 @@ export function ClarityProvider({ children }: { children: ReactNode }) {
     [patch, update, commitSession],
   );
 
-  // ── grading: photo → score ──
-  // Lives here rather than in the screen so navigating away mid-grade does not
-  // cancel it; the result is waiting when you come back.
-  useEffect(() => {
-    if (state.gradeStage !== "grading" || !state.gradePhoto) return;
-    let alive = true;
-    const project = state.projects.find((p) => p.id === state.gradeProjectId);
-
-    gradeProject({
-      image: state.gradePhoto,
-      projectTitle: project?.title ?? "Untitled project",
-      projectDesc: project?.desc ?? "",
-      progress: project?.progress ?? 0,
-    })
-      .then((grade) => {
-        if (!alive) return;
-        setState((s) => ({
-          ...s,
-          gradeStage: "result",
-          gradeResult: grade,
-          projects: s.projects.map((p) =>
-            p.id === s.gradeProjectId ? { ...p, grades: [grade, ...p.grades].slice(0, 12) } : p,
-          ),
-        }));
-        cheer(`Graded ${grade.score}/100`, grade.headline);
-      })
-      .catch(() => {
-        if (!alive) return;
-        setState((s) => ({ ...s, gradeStage: "camera" }));
-        note("Grading failed", "Have another go — the photo didn't get through.");
-      });
-
-    return () => {
-      alive = false;
-    };
-  }, [state.gradeStage, state.gradePhoto, state.gradeProjectId, state.projects]);
-
   // ── ideas feed: a real fetch in everything but name ──
   useEffect(() => {
     if (state.view !== "projects" || state.ideasLoaded) return;
@@ -1141,13 +1133,20 @@ export function ClarityProvider({ children }: { children: ReactNode }) {
     const today = getDay(state.days, dateKey());
     const viewedDay = getDay(state.days, state.viewDate);
     const frozen = new Set(state.freezeDays);
+    // A day opens on a floor carried from the one before it, so the score is
+    // never a flat zero staring back at you first thing in the morning.
+    const carryover = carryoverFrom(state.days[addDays(state.viewDate, -1)], state.goalMinutes);
     return {
       today,
       viewedDay,
       streak: computeStreak(state.days, 10, frozen),
-      score: clarityScore(viewedDay, state.goalMinutes),
+      score: clarityScore(viewedDay, state.goalMinutes, carryover),
       scheduleOn: scheduleActive(state.schedule),
       openProject: state.projects.find((p) => p.id === state.openProjectId) ?? null,
+      signingProject: state.projects.find((p) => p.id === state.signingProjectId) ?? null,
+      awaitingSignature: state.projects.filter(
+        (p) => !p.signature && (p.status === "done" || (!!p.dueDate && p.dueDate <= dateKey())),
+      ),
       freezeAvailable: freezeAvailableFrom(state.freezeDays),
       tabBarHidden: FULLSCREEN_VIEWS.includes(state.view),
       digestDone: state.digestRead.includes(todayKey()),
@@ -1157,7 +1156,7 @@ export function ClarityProvider({ children }: { children: ReactNode }) {
     };
   }, [
     state.days, state.viewDate, state.goalMinutes, state.schedule, state.freezeDays,
-    state.projects, state.openProjectId, state.view, state.digestRead,
+    state.projects, state.openProjectId, state.signingProjectId, state.view, state.digestRead,
   ]);
 
   const value = useMemo(() => ({ state, actions, derived }), [state, actions, derived]);

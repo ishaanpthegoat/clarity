@@ -54,7 +54,7 @@ export default function CommandPalette() {
     { label: "Projects", run: go("projects") },
     { label: "To-do", run: go("todos") },
     { label: "Daily digest", run: run(actions.openDigest), keywords: "news read digest" },
-    { label: "Evening check-in", run: go("checkin"), keywords: "mood reflection" },
+    { label: "What Clarity knows", run: go("knows"), keywords: "profile about me interests goal" },
     { label: "Home screen", hint: "See your locked apps", run: go("spring"), keywords: "springboard" },
     { label: "Settings", shortcut: ",", run: go("settings") },
   ];

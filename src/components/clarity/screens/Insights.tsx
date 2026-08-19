@@ -1,8 +1,10 @@
 ﻿// Clarity — Insights. The honest version of the numbers on Home, plus the
 // session log. If a day is empty here it is because nothing was logged, not
 // because the screen is decorative.
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useClarity } from "@/lib/clarityStore";
+import { useSwipeUpSync } from "@/lib/useSwipeUpSync";
+import SyncHint from "../SyncHint";
 import {
   addDays,
   dateKey,
@@ -18,6 +20,8 @@ type Range = 7 | 30;
 
 export default function Insights() {
   const { state, actions, derived } = useClarity();
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const sync = useSwipeUpSync(scrollRef, useCallback(() => actions.syncNow(), [actions]));
   const [range, setRange] = useState<Range>(7);
 
   const keys = Array.from({ length: range }, (_, i) => addDays(dateKey(), i - (range - 1)));
@@ -44,7 +48,10 @@ export default function Insights() {
   );
 
   return (
-    <div className="anim-slideUp clarity-scroll absolute inset-0 flex flex-col overflow-y-auto bg-background px-[22px] pb-[118px] pt-[calc(78px_+_var(--safe-t))]">
+    <div
+      ref={scrollRef}
+      className="anim-slideUp clarity-scroll absolute inset-0 flex flex-col overflow-y-auto bg-background px-[22px] pb-[118px] pt-[calc(78px_+_var(--safe-t))]"
+    >
       <div className="mb-6 flex items-center gap-3.5">
         <button
           onClick={() => actions.go("home")}
@@ -211,6 +218,8 @@ export default function Insights() {
         </span>
         <span className="text-muted-foreground">→</span>
       </button>
+
+      <SyncHint progress={sync.progress} syncing={sync.syncing} />
     </div>
   );
 }
