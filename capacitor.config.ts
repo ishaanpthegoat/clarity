@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.vikd.mindlock',
+  appId: 'com.ishaan.clarity',
   appName: 'MindLock',
   webDir: 'dist',
 };

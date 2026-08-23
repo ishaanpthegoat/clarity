@@ -30,28 +30,24 @@ below refers to the branch.
 
 ---
 
-## 2. Read this before you build anything
+## 2. This repo is a prototype, not the shipping app
 
-**This repo is Capacitor, not Expo.** `package.json` has zero Expo
-dependencies; `capacitor.config.ts` and `ios/App/App.xcworkspace` are the real
-native surface. The `eas.json` at the root is a leftover from an earlier
-attempt and nothing reads it.
+**MindLock-Expo is the shipping repo.** This Vite/Capacitor app is a web
+prototype. Anything built here has to be ported by hand — see
+[`PORT-TO-EXPO.md`](PORT-TO-EXPO.md) for what is outstanding and how.
 
-Ishaan's machine also has a separate `MindLock-Expo` folder. **Nobody has
-confirmed which of the two is the thing actually shipping to TestFlight.**
-Resolve that before you spend time on a build:
+Consequences, so nobody loses a day to them:
 
-- If TestFlight builds come from **this repo**, use the Capacitor/Xcode path in
-  §5 and ignore Expo entirely.
-- If they come from **MindLock-Expo**, then this repo is the web app and the
-  work here has to be ported or embedded — that is a different job, and you
-  should say so rather than guessing.
+- **Do not build or upload `ios/`.** It is a Capacitor scaffold for the
+  prototype. `eas.json` at the root is a dead leftover; nothing reads it.
+- The bundle id here is `com.ishaan.clarity`. It was briefly
+  `com.vikd.mindlock`, which is the **live** App Store record (6761637023)
+  carrying the Family Controls entitlement — a build under that id collides
+  with the real app. Do not set it back.
 
-Bundle id in this repo is `com.vikd.mindlock`. Confirm that matches App Store
-Connect before archiving; if it does not, change it in `capacitor.config.ts`
-**and** `ios/App/App.xcodeproj/project.pbxproj`, then re-run `npx cap sync ios`.
-
----
+Everything below is about running and developing the prototype. §5 (TestFlight)
+applies only if you have deliberately decided to ship this repo, which as of
+this writing nobody has.
 
 ## 3. Get it running (5 minutes, no key needed)
 
