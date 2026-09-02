@@ -12,6 +12,7 @@
 //   .env.local  →  VITE_API_URL=http://localhost:8787
 import type { ChatTurn, UserProfile } from "./aiService";
 import type { DailyDigest } from "./digest";
+import type { CommunityProject } from "./community";
 
 const BASE = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/+$/, "");
 
@@ -82,6 +83,33 @@ export function apiSaveProfile(profile: UserProfile): Promise<{ ok: boolean } | 
   return request(`/api/profile/${userId()}`, {
     method: "POST",
     body: JSON.stringify(profile),
+  });
+}
+
+/**
+ * What other people are working on.
+ *
+ * Returns null when there is no backend, which the caller reads as "use the
+ * local sample feed". An empty array is a different thing — a real server with
+ * nothing shared yet — and the caller distinguishes the two.
+ */
+export function apiCommunity(): Promise<CommunityProject[] | null> {
+  return request("/api/community");
+}
+
+/**
+ * Publish one project to the community feed.
+ *
+ * Nothing calls this yet. It is here so the client and server halves of
+ * sharing land together, but the opt-in UI is deliberately unbuilt — see
+ * SPEC-SESSION10.md §3 before wiring it to anything.
+ */
+export function apiShareProject(
+  project: Omit<CommunityProject, "cheers">,
+): Promise<{ ok: boolean } | null> {
+  return request(`/api/community/${userId()}`, {
+    method: "POST",
+    body: JSON.stringify(project),
   });
 }
 

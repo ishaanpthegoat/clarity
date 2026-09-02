@@ -11,7 +11,8 @@ import { useClarity } from "@/lib/clarityStore";
 import { useSwipeUpSync } from "@/lib/useSwipeUpSync";
 import SyncHint from "../SyncHint";
 import { daysUntil, formatDue } from "@/lib/clarityStats";
-import { PUBLIC_IDEAS, TRENDING, type Project, type ProjectStatus } from "@/lib/clarityData";
+import { TRENDING, type Project, type ProjectStatus } from "@/lib/clarityData";
+import { lastActiveLabel, type CommunityProject } from "@/lib/community";
 import { runOptimistic, simulateWrite } from "@/lib/optimistic";
 import { DUR, EASE_OUT, SPRING, stagger } from "@/lib/motion";
 import { ChipAction, PrimaryAction, Tip } from "../Action";
@@ -168,6 +169,28 @@ function ProjectRow({ project, index }: { project: Project; index: number }) {
 }
 
 /** The public ideas feed — the one block that stays on the main page. */
+/**
+ * The line under someone's name: what they have actually put in this week.
+ *
+ * This replaced the project's own subtitle, which was the same static string
+ * every day. Effort is the only thing here the reader cannot get from the
+ * title, and it is the reason to look at the feed at all — "4 sessions, 3h
+ * this week · 2h ago" says something a headline never can.
+ *
+ * Falls back to the timestamp alone when a project has been shared but not yet
+ * worked on, and to nothing at all when neither is usable, so a row is never
+ * padded with an apology about missing data.
+ */
+function effortLine(p: CommunityProject): string {
+  const active = lastActiveLabel(p.lastActiveAt);
+  if (!p.sessionsThisWeek) return active;
+  const hours = p.minutesThisWeek >= 60
+    ? `${(p.minutesThisWeek / 60).toFixed(p.minutesThisWeek % 60 ? 1 : 0)}h`
+    : `${p.minutesThisWeek}m`;
+  const effort = `${p.sessionsThisWeek} session${p.sessionsThisWeek === 1 ? "" : "s"}, ${hours} this week`;
+  return active ? `${effort} · ${active}` : effort;
+}
+
 function IdeasFeed() {
   const { state, actions } = useClarity();
   // Cheers are the clearest place in the app to show optimistic writes: the
@@ -189,7 +212,7 @@ function IdeasFeed() {
 
   return (
     <div className="flex flex-col gap-3">
-      {PUBLIC_IDEAS.map((idea, i) => {
+      {state.community.map((idea, i) => {
         const cheered = state.cheered.includes(idea.id);
         const adopted = state.adopted.includes(idea.id);
         return (
@@ -204,7 +227,7 @@ function IdeasFeed() {
               <Avatar initials={idea.initials} hue={idea.hue} size={44} ring={adopted} />
               <div className="min-w-0 flex-1">
                 <div className="truncate text-[15px] font-bold">{idea.author}</div>
-                <div className="mt-px truncate text-[12.5px] text-muted-foreground">{idea.focus}</div>
+                <div className="mt-px truncate text-[12.5px] text-muted-foreground">{effortLine(idea)}</div>
               </div>
               <Tip label={cheered ? "Remove your cheer" : `Cheer this — ${idea.cheers} others have`}>
                 <button
@@ -232,17 +255,19 @@ function IdeasFeed() {
             </div>
 
             <div className="mt-3.5">
-              <div className="text-[15.5px] font-bold leading-[1.3]">{idea.idea}</div>
+              <div className="text-[15.5px] font-bold leading-[1.3]">{idea.title}</div>
               <p className="mt-1.5 text-[13.5px] leading-[1.45] text-muted-foreground">{idea.desc}</p>
             </div>
 
             <div className="mt-3.5 flex items-center gap-2.5 border-t border-sand-line pt-3.5">
-              <span className="flex-1 text-[12px] text-muted-foreground">{idea.outcome}</span>
+              <span className="flex-1 text-[12px] text-muted-foreground">
+                {idea.outcome ?? `${idea.progress}% of the way there`}
+              </span>
               <Tip
                 label={
                   adopted
                     ? "Already in your projects"
-                    : `Copy "${idea.idea}" into your own projects`
+                    : `Copy "${idea.title}" into your own projects`
                 }
               >
                 <button
@@ -364,9 +389,11 @@ function WeekSection() {
       {/* The one section that lives on the main page. */}
       <div className="mb-3 mt-[30px] flex items-center justify-between">
         <span className="eyebrow eyebrow-muted flex items-center gap-1.5">
-          <Users size={12} /> Public ideas
+          <Users size={12} /> What people are working on
         </span>
-        <span className="text-[12px] text-muted-foreground">what others are building</span>
+        <span className="text-[12px] text-muted-foreground">
+          {state.communityIsSample ? "sample feed — no one is sharing yet" : "what others are building"}
+        </span>
       </div>
       <IdeasFeed />
     </>

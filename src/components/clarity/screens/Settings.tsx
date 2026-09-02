@@ -8,6 +8,12 @@
 //
 // What is left is genuinely settings: what you follow, how locking behaves,
 // which apps it applies to, and your data.
+//
+// Session 10 went one step further and collapsed the machinery into a single
+// card. There are exactly two sections now, and the split is meaningful rather
+// than tidy: "What Clarity knows" is the conversation you had at setup, still
+// editable; "Settings" is everything the app does. Five headings over eight
+// settings read as clutter, which is the whole complaint this screen got.
 import { useState } from "react";
 import { useClarity } from "@/lib/clarityStore";
 import { APP_CATALOG } from "@/lib/clarityData";
@@ -45,8 +51,11 @@ export default function Settings() {
   const { state, actions } = useClarity();
   const [confirmReset, setConfirmReset] = useState(false);
   const [confirmForget, setConfirmForget] = useState(false);
+  const [appsOpen, setAppsOpen] = useState(false);
 
   const { interests } = state.profile;
+  const lockedCount = state.apps.filter((a) => a.locked).length;
+  const unwatched = APP_CATALOG.filter((c) => !state.apps.some((a) => a.id === c.id));
 
   return (
     <div className="anim-slideUp clarity-scroll absolute inset-0 flex flex-col overflow-y-auto bg-background px-[22px] pb-[118px] pt-[calc(78px_+_var(--safe-t))]">
@@ -201,7 +210,21 @@ export default function Settings() {
         </div>
       </div>
 
-      <Section title="Focus">
+      {/* One section, not five.
+          There used to be Focus, Locking, Locked apps, Display and Your data —
+          five cards, five headings, twenty-odd rows, and no way to tell from
+          the headings which card held the thing you came for. Splitting eight
+          settings across five groups is what made this screen feel messy: the
+          groups were smaller than the labels announcing them.
+          The two things that genuinely differ stay apart — what Clarity knows
+          about you (above) is content, this is machinery — and inside here the
+          order is behavioural: what locking does, then what it applies to,
+          then how it looks, then the destructive stuff last. */}
+      <Section title="Settings">
+        <Row label="App locking" hint={state.locking ? "Distractions are locked away" : "Apps are open"}>
+          <ClaritySwitch on={state.locking} onClick={actions.toggleLock} aria-label="App locking" />
+        </Row>
+
         <Row
           label="Commit Mode by default"
           hint="No pause and no early exit, unless you confirm it"
@@ -212,20 +235,7 @@ export default function Settings() {
             aria-label="Commit Mode by default"
           />
         </Row>
-        <Row label="Session length and daily goal" hint="Both live on the home screen now">
-          <button
-            onClick={() => actions.go("home")}
-            className="h-11 rounded-[10px] border border-sand-line px-4 text-[13.5px] font-semibold text-foreground/85 transition-colors hover:text-foreground"
-          >
-            Open
-          </button>
-        </Row>
-      </Section>
 
-      <Section title="Locking">
-        <Row label="App locking" hint={state.locking ? "Distractions are locked away" : "Apps are open"}>
-          <ClaritySwitch on={state.locking} onClick={actions.toggleLock} aria-label="App locking" />
-        </Row>
         <Row label="Focus window" hint="Locking turns itself on inside these hours">
           <ClaritySwitch
             on={state.schedule.enabled}
@@ -281,58 +291,82 @@ export default function Settings() {
             </div>
           </div>
         )}
-      </Section>
 
-      <Section title="Locked apps">
-        {state.apps.map((app) => (
-          <div key={app.id} className="flex items-center gap-3 py-3">
-            <AppLogo app={app} size={38} />
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-[15.5px] font-semibold">{app.name}</div>
-              <div className="mt-0.5 text-[12.5px] text-muted-foreground">
-                {app.locked ? "Locked while Clarity is on" : "Open — not being watched"}
+        {/* The app list is the longest thing on this screen by some way and the
+            least often changed — you set it once. It folds so the rows that are
+            actually retuned stay on one screen. */}
+        <Row
+          label="Locked apps"
+          hint={`${lockedCount} of ${state.apps.length} locked while Clarity is on`}
+        >
+          <button
+            onClick={() => setAppsOpen((v) => !v)}
+            aria-expanded={appsOpen}
+            className="h-11 rounded-[10px] border border-sand-line px-4 text-[13.5px] font-semibold text-foreground/85 transition-colors hover:text-foreground"
+          >
+            {appsOpen ? "Done" : "Edit"}
+          </button>
+        </Row>
+        {appsOpen && (
+          <div className="py-1">
+            {state.apps.map((app) => (
+              <div key={app.id} className="flex items-center gap-3 py-3">
+                <AppLogo app={app} size={38} />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-[15.5px] font-semibold">{app.name}</div>
+                  <div className="mt-0.5 text-[12.5px] text-muted-foreground">
+                    {app.locked ? "Locked while Clarity is on" : "Open — not being watched"}
+                  </div>
+                </div>
+                <IconAction
+                  icon={<X size={14} />}
+                  label="Remove"
+                  tooltip={`Stop watching ${app.name} entirely`}
+                  onClick={() => actions.removeApp(app.id)}
+                  side="left"
+                  hideLabel
+                />
+                <ClaritySwitch
+                  on={app.locked}
+                  onClick={() => actions.toggleAppLock(app.id)}
+                  aria-label={`Lock ${app.name}`}
+                />
               </div>
-            </div>
-            <IconAction
-              icon={<X size={14} />}
-              label="Remove"
-              tooltip={`Stop watching ${app.name} entirely`}
-              onClick={() => actions.removeApp(app.id)}
-              side="left"
-              hideLabel
-            />
-            <ClaritySwitch
-              on={app.locked}
-              onClick={() => actions.toggleAppLock(app.id)}
-              aria-label={`Lock ${app.name}`}
-            />
-          </div>
-        ))}
+            ))}
 
-        {/* Anything from the catalogue that isn't already on the list. */}
-        {APP_CATALOG.filter((c) => !state.apps.some((a) => a.id === c.id)).length > 0 && (
-          <div className="py-4">
-            <div className="mb-3 text-[13px] text-muted-foreground">Add another app</div>
-            <div className="flex flex-wrap gap-2">
-              {APP_CATALOG.filter((c) => !state.apps.some((a) => a.id === c.id)).map((c) => (
-                <Tip key={c.id} label={`Start locking ${c.name}`}>
-                  <button
-                    onClick={() => actions.addApp(c.id)}
-                    aria-label={`Add ${c.name}`}
-                    className="flex h-11 items-center gap-2 rounded-[12px] border border-sand-line raise pl-1.5 pr-3 text-[13.5px] font-semibold text-foreground/85 transition-colors hover:border-spice-400/40 hover:text-foreground"
-                  >
-                    <AppLogo app={{ ...c }} size={30} />
-                    {c.name}
-                    <Plus size={13} />
-                  </button>
-                </Tip>
-              ))}
-            </div>
+            {/* Anything from the catalogue that isn't already on the list. */}
+            {unwatched.length > 0 && (
+              <div className="py-4">
+                <div className="mb-3 text-[13px] text-muted-foreground">Add another app</div>
+                <div className="flex flex-wrap gap-2">
+                  {unwatched.map((c) => (
+                    <Tip key={c.id} label={`Start locking ${c.name}`}>
+                      <button
+                        onClick={() => actions.addApp(c.id)}
+                        aria-label={`Add ${c.name}`}
+                        className="flex h-11 items-center gap-2 rounded-[12px] border border-sand-line raise pl-1.5 pr-3 text-[13.5px] font-semibold text-foreground/85 transition-colors hover:border-spice-400/40 hover:text-foreground"
+                      >
+                        <AppLogo app={{ ...c }} size={30} />
+                        {c.name}
+                        <Plus size={13} />
+                      </button>
+                    </Tip>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
-      </Section>
 
-      <Section title="Display">
+        <Row label="Session length and daily goal" hint="Both live on the home screen now">
+          <button
+            onClick={() => actions.go("home")}
+            className="h-11 rounded-[10px] border border-sand-line px-4 text-[13.5px] font-semibold text-foreground/85 transition-colors hover:text-foreground"
+          >
+            Open
+          </button>
+        </Row>
+
         <Row label="Appearance" hint={state.theme === "dark" ? "Night on the sand" : "Midday glare"}>
           <div className="flex gap-1.5">
             <button
@@ -361,9 +395,7 @@ export default function Settings() {
             </button>
           </div>
         </Row>
-      </Section>
 
-      <Section title="Your data">
         <Row label="Export history" hint="Every session, day and project, as JSON">
           <Tip label="Download your whole history as a JSON file">
             <button
@@ -374,19 +406,7 @@ export default function Settings() {
             </button>
           </Tip>
         </Row>
-        <Row
-          label="Forget what Clarity knows"
-          hint="Wipes the profile above and starts onboarding again. Your history stays."
-        >
-          <Tip label="Delete the profile and re-run onboarding">
-            <button
-              onClick={() => setConfirmForget(true)}
-              className="flex h-11 items-center gap-1.5 rounded-[10px] border border-destructive/40 px-4 text-[13.5px] font-semibold text-destructive"
-            >
-              <Trash size={14} /> Forget
-            </button>
-          </Tip>
-        </Row>
+
         <Row label="Reset everything" hint="Clears your history. This cannot be undone.">
           <Tip label="Delete every logged day, session and project">
             <button

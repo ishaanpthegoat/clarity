@@ -1,6 +1,6 @@
 // Clarity server — HTTP surface.
 //
-// Six routes, one scheduled job. The frontend's `src/lib/api.ts` speaks to
+// Eight routes, one scheduled job. The frontend's `src/lib/api.ts` speaks to
 // exactly these; if VITE_API_URL is unset it never calls them and runs on its
 // local templates instead, so the two halves ship independently.
 import { serve } from "@hono/node-server";
@@ -9,7 +9,7 @@ import { cors } from "hono/cors";
 import { chatReply, usingRealModel, type ChatTurn, type UserProfile } from "./ai.js";
 import { buildDigest, runDailyJob, todayKey } from "./digest.js";
 import { CATEGORIES } from "./feeds.js";
-import { store } from "./store.js";
+import { store, type SharedProject } from "./store.js";
 import { startCron } from "./cron.js";
 
 const app = new Hono();
@@ -76,6 +76,37 @@ app.post("/api/chat-reply", async (c) => {
   const body = (await c.req.json()) as { history?: ChatTurn[]; message?: string };
   if (!body.message) return c.json({ error: "message required" }, 400);
   return c.json({ message: await chatReply(body.history ?? [], body.message) });
+});
+
+// ── community: what other people are working on ─────────────────────────────
+//
+// ⚠️ SCAFFOLD. These two routes are complete enough to develop against and are
+// NOT ready to be public. Before the app has real users, all of the following
+// has to exist — see SPEC-SESSION10.md §3:
+//
+//   * moderation. `title` and `desc` are free text that other users read, and
+//     nothing here inspects either.
+//   * a rate limit on POST. It is unauthenticated and writes to disk.
+//   * an owner check on the delete path, which does not exist yet at all — a
+//     user cannot currently un-share a project.
+//   * a real `author`. The client sends a display name it was given; nothing
+//     verifies it, so two people can be the same name.
+//
+// Nothing in the frontend calls the POST route today. The GET is safe to serve
+// because an empty list is the honest answer until someone shares something.
+
+app.get("/api/community", async (c) => {
+  const limit = Math.min(Number(c.req.query("limit")) || 50, 100);
+  return c.json(await store.listShared(limit));
+});
+
+app.post("/api/community/:userId", async (c) => {
+  const project = (await c.req.json()) as SharedProject;
+  if (!project?.id || !project.title?.trim()) {
+    return c.json({ error: "id and title required" }, 400);
+  }
+  await store.shareProject(c.req.param("userId"), project);
+  return c.json({ ok: true });
 });
 
 // ── the job, on demand ──────────────────────────────────────────────────────

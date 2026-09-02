@@ -21,6 +21,14 @@ export interface UserProfile {
   specifics: Record<string, string>;
   goal: string;
   avoid: string;
+  /** Why they installed it, in their words. Steers tone, not content. */
+  purpose?: string;
+  /** Everything they named, `goal` included as the first entry. */
+  goals?: string[];
+  /** What pulls them away, verbatim. */
+  distractions?: string;
+  /** Minutes they said they can hold focus for. 0 means never asked. */
+  focusSpan?: number;
 }
 
 export interface ChatTurn {

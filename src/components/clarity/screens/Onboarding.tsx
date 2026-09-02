@@ -17,15 +17,43 @@
 // The order is deliberate too: the goal comes before the interests, so the bot
 // is established as something helping you get somewhere before it asks what to
 // put in your feed. Everything after that is framed against the goal.
+//
+// ─────────────────────────────────────────────────────────────────────────────
+// WHAT THIS CONVERSATION IS FOR (session 10)
+// ─────────────────────────────────────────────────────────────────────────────
+// It used to learn four things and configure nothing — you finished it and
+// landed on a home screen with default apps locked and a default session
+// length, as if you had said none of it. It now captures enough to set the app
+// up, and `finishOnboarding` in the store applies every answer:
+//
+//   purpose      → the tone the bot takes from here on
+//   goals        → become projects, so the projects tab isn't empty on day one
+//   distractions → matched to the app catalogue; those apps get locked
+//   focusSpan    → becomes `sessionMinutes`, so the Home slider opens on their
+//                  number rather than on 25
+//
+// Two turns were added, not six. Each new question earns its place by changing
+// something the user would otherwise have to go and set by hand, and anything
+// that can be skipped says so in the question itself.
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useClarity } from "@/lib/clarityStore";
+import { APP_CATALOG } from "@/lib/clarityData";
+import { SPAN_PRESETS, matchApps, parseSpan, splitGoals } from "@/lib/onboarding";
 import { INTEREST_CATEGORIES, categoryLabel, matchCategories } from "@/lib/feeds";
 import { chatReply, type ChatTurn, type UserProfile } from "@/lib/aiService";
 import { DUR, EASE_OUT, SPRING } from "@/lib/motion";
 import { ArrowUpRight } from "../icons";
 
-type Step = "name" | "goal" | "interests" | "refine" | "done";
+type Step =
+  | "name"
+  | "purpose"
+  | "goal"
+  | "distractions"
+  | "span"
+  | "interests"
+  | "refine"
+  | "done";
 
 const OPENER =
   "Hey — I'm Clarity.\n\nMost people end up here because their phone is quietly eating time they'd rather spend on something else. I'm going to hand that time back, and give you one short read a day instead of the endless scroll.\n\nWhat should I call you?";
@@ -44,6 +72,10 @@ export default function Onboarding() {
     specifics: {},
     goal: "",
     avoid: "",
+    purpose: "",
+    goals: [],
+    distractions: "",
+    focusSpan: 0,
   });
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -83,21 +115,68 @@ export default function Onboarding() {
       const name = value.split(/\s+/)[0].replace(/[^\p{L}\p{N}'-]/gu, "");
       setProfile((p) => ({ ...p, name }));
       await botSays(
-        `Good to meet you, ${name || "you"}.\n\nSo before anything else — if the scrolling stopped tomorrow, what would you want that time going into instead?`,
+        `Good to meet you, ${name || "you"}.\n\nSo — what do you want out of this? Some people want the hours back, some want one thing finished, some just want to stop reaching for their phone without deciding to. What's yours?`,
+      );
+      setStep("purpose");
+      return;
+    }
+
+    if (step === "purpose") {
+      setProfile((p) => ({ ...p, purpose: value }));
+      setTyping(true);
+      const reply = await chatReply(history, value);
+      setTyping(false);
+      say(
+        "bot",
+        `${reply.message}\n\nSo let's make that concrete. What are you actually trying to get to? Name as many as you've got — I'll set each one up as something you can track.`,
       );
       setStep("goal");
       return;
     }
 
     if (step === "goal") {
-      setProfile((p) => ({ ...p, goal: value }));
-      // The bot reacts to the goal, then asks the next thing in the same breath.
+      // Plural on purpose. People arrive with three things they keep meaning to
+      // do, and a single-goal field made them pick one and forget the rest.
+      const goals = splitGoals(value);
+      setProfile((p) => ({ ...p, goal: goals[0] ?? value, goals }));
       setTyping(true);
       const reply = await chatReply(history, value);
       setTyping(false);
       say(
         "bot",
-        `${reply.message}\n\nI still want you in the loop on things you actually care about though — just once a day rather than all day. What do you like keeping up with?`,
+        `${reply.message}\n\nNow the other half of it. What's actually pulling you away — which apps do you lose the evening to?`,
+      );
+      setStep("distractions");
+      return;
+    }
+
+    if (step === "distractions") {
+      setProfile((p) => ({ ...p, distractions: value }));
+      const matched = matchApps(value);
+      // Say what will happen rather than promising it. If nothing matched, the
+      // honest version is that they'll pick the apps themselves.
+      const ack = matched.length
+        ? `Right — ${matched.map((a) => a.name).join(", ")}. I'll lock ${matched.length === 1 ? "it" : "those"} the moment you start a session.`
+        : "Noted. I'll start with the usual suspects and you can swap them in Settings.";
+      await botSays(
+        `${ack}\n\nLast thing about how you work: how long can you actually hold focus in one go, honestly? Not how long you wish.`,
+      );
+      setStep("span");
+      return;
+    }
+
+    if (step === "span") {
+      const mins = parseSpan(value);
+      if (!mins) {
+        await botSays(
+          "Give me that as a number of minutes — or tap one below. Anything from five minutes up.",
+          420,
+        );
+        return;
+      }
+      setProfile((p) => ({ ...p, focusSpan: mins }));
+      await botSays(
+        `${mins} minutes it is — that's what a session will run for, and you can drag it any time on the home screen.\n\nI still want you in the loop on things you actually care about though — just once a day rather than all day. What do you like keeping up with?`,
       );
       setStep("interests");
       return;
@@ -136,31 +215,65 @@ export default function Onboarding() {
   }
 
   /** A chip fills the box rather than submitting — the words stay theirs. */
-  function addChip(label: string) {
-    setDraft((d) => (d.trim() ? `${d.replace(/,\s*$/, "")}, ${label}` : label));
+  function addChip(label: string, replace = false) {
+    if (replace) setDraft(label);
+    else setDraft((d) => (d.trim() ? `${d.replace(/,\s*$/, "")}, ${label}` : label));
     inputRef.current?.focus();
   }
+
+  /**
+   * Suggestions for the current turn, or none.
+   *
+   * Every one of these is a shortcut past typing, never a gate: the input stays
+   * open underneath and a typed answer is always accepted. `replace` is on for
+   * the span chips because "25, 50" is not a length anyone means.
+   */
+  const chipRow: { items: string[]; replace: boolean } | null =
+    step === "interests"
+      ? { items: INTEREST_CATEGORIES.map((c) => c.label), replace: false }
+      : step === "distractions"
+        ? { items: APP_CATALOG.map((a) => a.name), replace: false }
+        : step === "span"
+          ? { items: SPAN_PRESETS.map((m) => `${m} minutes`), replace: true }
+          : null;
 
   function finish(refinement: string) {
     const clean = refinement.trim();
     const primary = profile.interests[0];
     actions.finishOnboarding({
       ...profile,
+      // Someone who named exactly one goal still has a goals list — the store
+      // reads `goals` and nothing else when it seeds projects.
+      goals: profile.goals.length ? profile.goals : profile.goal ? [profile.goal] : [],
       specifics: clean && primary ? { [primary]: clean } : {},
     });
   }
 
-  const placeholder =
-    step === "name"
-      ? "Your name"
-      : step === "goal"
-        ? "Whatever you keep meaning to get to"
-        : step === "interests"
-          ? "In your own words"
-          : "A team, a company, a topic";
+  const PLACEHOLDERS: Record<Step, string> = {
+    name: "Your name",
+    purpose: "What you want out of it",
+    goal: "As many as you've got",
+    distractions: "The apps you lose the evening to",
+    span: "e.g. 45 minutes",
+    interests: "In your own words",
+    refine: "A team, a company, a topic",
+    done: "",
+  };
+  const placeholder = PLACEHOLDERS[step];
 
-  const progress =
-    step === "name" ? 0.08 : step === "goal" ? 0.34 : step === "interests" ? 0.64 : 0.88;
+  // Weighted rather than evenly spaced: the first answer is the one people
+  // abandon on, so it has to move the bar more than its share.
+  const PROGRESS: Record<Step, number> = {
+    name: 0.06,
+    purpose: 0.22,
+    goal: 0.38,
+    distractions: 0.54,
+    span: 0.68,
+    interests: 0.82,
+    refine: 0.93,
+    done: 1,
+  };
+  const progress = PROGRESS[step];
 
   return (
     <div className="absolute inset-0 flex flex-col bg-background">
@@ -240,15 +353,15 @@ export default function Onboarding() {
         className="flex-none border-t border-sand-line px-5 pt-3"
         style={{ paddingBottom: "max(20px, env(safe-area-inset-bottom))" }}
       >
-        {step === "interests" && (
+        {chipRow && (
           <div className="clarity-scroll -mx-1 mb-2.5 flex gap-2 overflow-x-auto px-1 pb-1">
-            {INTEREST_CATEGORIES.map((c) => (
+            {chipRow.items.map((label) => (
               <button
-                key={c.id}
-                onClick={() => addChip(c.label)}
+                key={label}
+                onClick={() => addChip(label, chipRow.replace)}
                 className="h-9 flex-none rounded-full border border-sand-line px-3.5 text-[13px] font-medium text-muted-foreground transition-colors hover:border-spice-400/40 hover:text-foreground"
               >
-                {c.label}
+                {label}
               </button>
             ))}
           </div>

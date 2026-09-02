@@ -13,7 +13,6 @@ import {
 } from "react";
 import {
   APP_CATALOG,
-  PUBLIC_IDEAS,
   SEED_APPS,
   SEED_PROJECTS,
   SEED_TODOS,
@@ -36,11 +35,13 @@ import {
   type Session,
 } from "./clarityStats";
 import { cheer, note, haptic } from "./feedback";
-import { simulateWrite } from "./optimistic";
 import type { UserProfile } from "./aiService";
 import { buildUserDigest, todayKey, type DailyDigest } from "./digest";
-import { apiSaveProfile } from "./api";
+import { apiSaveProfile, hasBackend } from "./api";
 import { orderedInterests } from "./personalize";
+import { fetchCommunity, localCommunity, type CommunityProject } from "./community";
+import { GOAL_BOUNDS, SESSION_BOUNDS } from "./sessionBounds";
+import { matchApps } from "./onboarding";
 
 export type ClarityView =
   | "splash"
@@ -69,9 +70,12 @@ export interface LockSchedule {
   days: number[];
 }
 
-/** Bounds for the two duration sliders, shared by Settings and the store clamp. */
-export const SESSION_BOUNDS = { min: 5, max: 420, step: 5 } as const;
-export const GOAL_BOUNDS = { min: 10, max: 720, step: 10 } as const;
+/**
+ * Bounds for the two duration sliders, shared by Home and the store clamp.
+ * Defined in `sessionBounds.ts` and re-exported here so the many existing
+ * imports from this module keep working.
+ */
+export { SESSION_BOUNDS, GOAL_BOUNDS } from "./sessionBounds";
 
 /** One freeze per rolling 7 days. Enough to survive a bad week, not to coast. */
 export const FREEZE_WINDOW_DAYS = 7;
@@ -111,6 +115,14 @@ export interface ClarityState {
   adopted: string[];
   /** False until the ideas feed has "arrived" — drives its skeleton. */
   ideasLoaded: boolean;
+  /**
+   * What other people are working on. Fetched on first visit to the projects
+   * tab, from the backend when there is one and from the local sample feed
+   * otherwise — `community.ts` decides which, and nothing here can tell.
+   */
+  community: CommunityProject[];
+  /** True when the list above is the local sample rather than real people. */
+  communityIsSample: boolean;
   /** The project whose sign-off sheet is open, if any. */
   signingProjectId: string | null;
 
@@ -167,6 +179,10 @@ const EMPTY_PROFILE: UserProfile = {
   specifics: {},
   goal: "",
   avoid: "",
+  purpose: "",
+  goals: [],
+  distractions: "",
+  focusSpan: 0,
 };
 
 const DEFAULT_SCHEDULE: LockSchedule = {
@@ -273,6 +289,8 @@ function makeInitial(): ClarityState {
     cheered: saved.cheered ?? [],
     adopted: saved.adopted ?? [],
     ideasLoaded: false,
+    community: [],
+    communityIsSample: true,
     signingProjectId: null,
 
     sessionMinutes: saved.sessionMinutes ?? 25,
@@ -756,6 +774,13 @@ export function ClarityProvider({ children }: { children: ReactNode }) {
        * Straight to Home. The paywall used to sit here, which meant every
        * fresh install was asked to buy before it had shown anything worth
        * buying — it is now reachable only from Settings.
+       *
+       * This is also where the conversation stops being a transcript and
+       * becomes configuration. Onboarding used to write a profile and nothing
+       * else, so you answered five questions and landed on stock defaults; now
+       * every answer that maps to a setting is applied here, once, before the
+       * home screen first paints. Nothing is applied twice — re-running
+       * onboarding resets the profile first (see `redoOnboarding`).
        */
       finishOnboarding: (profile) => {
         // Fire-and-forget: a backend that is unreachable must not block anyone
@@ -765,7 +790,52 @@ export function ClarityProvider({ children }: { children: ReactNode }) {
           profile.name ? `Good to meet you, ${profile.name}` : "You're set",
           "Your digest is ready on the Digest tab.",
         );
-        patch({ profile, onboarded: true, view: "home" });
+
+        setState((s) => {
+          // 1. Session length. `focusSpan` is 0 when the question never got a
+          //    usable answer, in which case the existing default stands.
+          const sessionMinutes = profile.focusSpan
+            ? Math.min(
+                SESSION_BOUNDS.max,
+                Math.max(SESSION_BOUNDS.min, Math.round(profile.focusSpan)),
+              )
+            : s.sessionMinutes;
+
+          // 2. Locked apps. Naming apps replaces the seed list rather than
+          //    adding to it — someone who said "instagram" does not also mean
+          //    the four apps we guessed for them. Say nothing and the seeds
+          //    stay, which is why this is guarded on a non-empty match.
+          const named = matchApps(profile.distractions);
+          const apps = named.length
+            ? named.flatMap((match) => {
+                const entry = APP_CATALOG.find((c) => c.id === match.id);
+                return entry ? [{ ...entry, locked: true }] : [];
+              })
+            : s.apps;
+
+          // 3. Projects. Each goal becomes one, ahead of the seeds, so the
+          //    projects tab opens on their words instead of our examples.
+          const seeded: Project[] = profile.goals.map((title, i) => ({
+            id: `p_goal_${Date.now()}_${i}`,
+            title,
+            desc: profile.purpose
+              ? `From setup — ${profile.purpose}`
+              : "Named during setup.",
+            status: "active" as ProjectStatus,
+            progress: 0,
+            notes: "",
+          }));
+
+          return {
+            ...s,
+            profile,
+            onboarded: true,
+            view: "home",
+            sessionMinutes,
+            apps,
+            projects: [...seeded, ...s.projects],
+          };
+        });
       },
 
       goPaywall: () => patch({ view: "paywall" }),
@@ -897,22 +967,42 @@ export function ClarityProvider({ children }: { children: ReactNode }) {
       adoptIdea: (id) =>
         setState((s) => {
           if (s.adopted.includes(id)) return s;
-          const idea = PUBLIC_IDEAS.find((i) => i.id === id);
+          // Reads the loaded feed, not the constant — the feed is live now, so
+          // the constant is only ever one possible source of it.
+          const idea = s.community.find((i) => i.id === id);
           if (!idea) return s;
           const project: Project = {
             id: `p${Date.now()}`,
-            title: idea.idea,
+            title: idea.title,
             desc: idea.desc,
             status: "idea",
             progress: 0,
             notes: "",
             adoptedFrom: idea.author,
           };
-          cheer(`Added "${idea.idea}"`, `From ${idea.author}. It's in your projects now.`);
+          cheer(`Added "${idea.title}"`, `From ${idea.author}. It's in your projects now.`);
           return { ...s, adopted: [...s.adopted, id], projects: [project, ...s.projects] };
         }),
 
-      loadIdeas: () => patch({ ideasLoaded: true }),
+      /**
+       * Load the community feed, once.
+       *
+       * `hasBackend` decides what the UI is allowed to claim: with a server
+       * behind it these are real people and the feed says so, without one they
+       * are the local sample and the feed says that instead. Getting this
+       * backwards would have the app present six fictional strangers as its
+       * users, which is the one thing this feature must never do.
+       */
+      loadIdeas: () => {
+        void (async () => {
+          const list = await fetchCommunity();
+          patch({
+            community: list.length ? list : localCommunity(),
+            communityIsSample: !hasBackend || !list.length,
+            ideasLoaded: true,
+          });
+        })();
+      },
 
       // ── grader ──
       toggleProject: (id) =>
@@ -1116,17 +1206,15 @@ export function ClarityProvider({ children }: { children: ReactNode }) {
     [patch, update, commitSession],
   );
 
-  // ── ideas feed: a real fetch in everything but name ──
+  // ── community feed: a real fetch, now actually ──
+  //
+  // This used to be `simulateWrite(650)` flipping a flag, which was honest
+  // enough while the feed was six hardcoded people. It is a network call now,
+  // so it goes through the action rather than faking the wait.
   useEffect(() => {
     if (state.view !== "projects" || state.ideasLoaded) return;
-    let alive = true;
-    simulateWrite(650).then(() => {
-      if (alive) setState((s) => ({ ...s, ideasLoaded: true }));
-    });
-    return () => {
-      alive = false;
-    };
-  }, [state.view, state.ideasLoaded]);
+    actions.loadIdeas();
+  }, [state.view, state.ideasLoaded, actions]);
 
   const derived = useMemo<ClarityDerived>(() => {
     const today = getDay(state.days, dateKey());

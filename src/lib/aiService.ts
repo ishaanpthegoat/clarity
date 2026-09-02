@@ -37,10 +37,30 @@ export interface UserProfile {
   interests: string[];
   /** category id → the exact thing they said they want inside it. */
   specifics: Record<string, string>;
-  /** What they're trying to spend the reclaimed time on. */
+  /** What they're trying to spend the reclaimed time on. The headline goal. */
   goal: string;
   /** What they want less of. */
   avoid: string;
+
+  // ── the deeper capture (added session 10) ──────────────────────────────────
+  // Onboarding used to learn four things and configure nothing. These four are
+  // the difference between a profile that shapes a digest and one that shapes
+  // the whole app: `purpose` sets the tone, `goals` become projects,
+  // `distractions` decide which apps get locked, and `focusSpan` sets the
+  // session length so the first slider someone sees is already their number.
+  //
+  // All four are optional in practice — a profile written before this existed
+  // deserializes with them empty, and every consumer treats empty as "never
+  // asked" rather than "answered nothing".
+
+  /** Why they installed it, in their words. Steers tone, not content. */
+  purpose: string;
+  /** Everything they named, `goal` included as the first entry. */
+  goals: string[];
+  /** What pulls them away, verbatim — matched against the app catalogue. */
+  distractions: string;
+  /** Minutes they said they can hold focus for. 0 means never asked. */
+  focusSpan: number;
 }
 
 export interface ChatTurn {
@@ -62,9 +82,16 @@ why it might matter to them. If the stories are unrelated, that is fine — do
 not invent a connective theme.`;
 
 export const CHAT_SYSTEM_PROMPT = `You are the onboarding voice of Clarity, an app that replaces endless feeds
-with one short daily digest. You are warm, curious and brief — two sentences at
-most, and you never sound like a form. Ask one thing at a time. When someone
-names an interest, get specific about what inside it they actually care about.`;
+with one short daily digest and locks the apps that eat someone's day. You are
+warm, curious and brief — two sentences at most, and you never sound like a
+form. Ask one thing at a time. When someone names an interest, get specific
+about what inside it they actually care about.
+
+You are gathering enough to configure the app for them: what they want out of
+it, what they are working toward, what pulls them away, how long they can hold
+focus, and what they want to keep up with. Acknowledge what they just said in a
+way that proves you read it — reflect a specific detail back rather than saying
+"got it" — and never restate the question you are about to be asked next.`;
 
 // ── the fake implementations ────────────────────────────────────────────────
 

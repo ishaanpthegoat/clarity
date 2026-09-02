@@ -123,13 +123,25 @@ test("the onboarding conversation advances, animates and completes", async ({ pa
   await expect(bot).toHaveCount(2, { timeout: 10_000 });
   widths.push(await progress());
 
-  await reply(page, "finally learn to cook properly");
+  await reply(page, "get my evenings back");
   await expect(bot).toHaveCount(3, { timeout: 10_000 });
+  widths.push(await progress());
+
+  await reply(page, "finally learn to cook properly");
+  await expect(bot).toHaveCount(4, { timeout: 10_000 });
   widths.push(await progress());
   await frame(page).screenshot({ path: path.join(SHOTS, "r-onboarding-mid.png") });
 
+  await reply(page, "instagram and tiktok");
+  await expect(bot).toHaveCount(5, { timeout: 10_000 });
+  widths.push(await progress());
+
+  await reply(page, "about 50 minutes");
+  await expect(bot).toHaveCount(6, { timeout: 10_000 });
+  widths.push(await progress());
+
   await reply(page, "football and AI stuff");
-  await expect(bot).toHaveCount(4, { timeout: 10_000 });
+  await expect(bot).toHaveCount(7, { timeout: 10_000 });
   widths.push(await progress());
 
   // Strictly increasing: every answer visibly moves the bar along.
@@ -243,9 +255,14 @@ test("projects is sectioned, ideas stay on the main page, grading runs", async (
   await page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "Projects", exact: true }).click();
   await page.waitForTimeout(1200); // let the ideas feed "arrive"
 
-  // Ideas are on the main page, with avatars, not behind a tab.
-  await expect(page.getByText("Public ideas")).toBeVisible();
+  // The feed is on the main page, with avatars, not behind a tab.
+  await expect(page.getByText("What people are working on")).toBeVisible();
   await expect(page.getByRole("button", { name: /Cheer Maya Okonkwo/i })).toBeVisible();
+
+  // With no backend the feed is the local sample, and it has to say so —
+  // presenting six fictional people as the app's users is the one outcome this
+  // feature must never produce.
+  await expect(page.getByText(/sample feed/i)).toBeVisible();
   await frame(page).screenshot({ path: path.join(SHOTS, "r-projects-week.png") });
 
   // Cheering commits instantly (optimistic), no spinner in between.

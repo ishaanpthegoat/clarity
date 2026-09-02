@@ -17,6 +17,10 @@ const profile = (over: Partial<UserProfile> = {}): UserProfile => ({
   specifics: { sports: "Arsenal transfers" },
   goal: "finally learn to cook properly",
   avoid: "politics",
+  purpose: "stop losing evenings to my phone",
+  goals: ["finally learn to cook properly"],
+  distractions: "instagram and youtube",
+  focusSpan: 50,
   ...over,
 });
 

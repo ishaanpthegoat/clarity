@@ -22,14 +22,38 @@ export interface CategoryDigest {
 /** day (ISO) → category → the one summary generated for it that day. */
 export type DigestCache = Record<string, Record<string, CategoryDigest>>;
 
+/**
+ * One project somebody chose to publish.
+ *
+ * Mirrors `CommunityProject` in the frontend's `src/lib/community.ts`; the two
+ * are kept in sync by hand, the same arrangement `UserProfile` already has.
+ * `cheers` is server-owned — the client sends everything but that.
+ */
+export interface SharedProject {
+  id: string;
+  author: string;
+  initials: string;
+  hue: number;
+  title: string;
+  desc: string;
+  progress: number;
+  sessionsThisWeek: number;
+  minutesThisWeek: number;
+  lastActiveAt: string;
+  cheers: number;
+  outcome?: string;
+}
+
 interface Data {
   /** Opaque user id → their profile. Never keyed by anything personal. */
   profiles: Record<string, UserProfile>;
   digests: DigestCache;
+  /** Opaque user id → the projects that user has published. */
+  shared: Record<string, SharedProject[]>;
 }
 
 const FILE = resolve(process.env.DATA_FILE ?? "./data/clarity.json");
-const EMPTY: Data = { profiles: {}, digests: {} };
+const EMPTY: Data = { profiles: {}, digests: {}, shared: {} };
 
 let cache: Data | null = null;
 /** Serialises writes so two concurrent requests can't clobber the file. */
@@ -80,6 +104,37 @@ export const store = {
     const data = await load();
     data.digests[day] = { ...(data.digests[day] ?? {}), [entry.category]: entry };
     data.digests = prune(data.digests);
+    await persist();
+  },
+
+  /**
+   * Every published project, newest activity first.
+   *
+   * Flattened across users on read rather than kept as one list, so revoking a
+   * share is a delete from one user's array and cannot miss a copy elsewhere.
+   * Fine at this size; it is a full scan, so it needs an index before the
+   * shared set is large. See SPEC-SESSION10.md §3 for what else is missing —
+   * this route has no moderation, no rate limit and no abuse story yet.
+   */
+  async listShared(limit = 50): Promise<SharedProject[]> {
+    const data = await load();
+    return Object.values(data.shared)
+      .flat()
+      .sort((a, b) => Date.parse(b.lastActiveAt) - Date.parse(a.lastActiveAt))
+      .slice(0, limit);
+  },
+
+  /** Publishes, or replaces the caller's earlier copy of the same project. */
+  async shareProject(userId: string, project: SharedProject): Promise<void> {
+    const data = await load();
+    const mine = data.shared[userId] ?? [];
+    const existing = mine.find((p) => p.id === project.id);
+    data.shared[userId] = [
+      ...mine.filter((p) => p.id !== project.id),
+      // Cheers belong to the readers, not the author — carry them across a
+      // republish rather than letting an update reset someone's count.
+      { ...project, cheers: existing?.cheers ?? 0 },
+    ];
     await persist();
   },
 

@@ -62,19 +62,45 @@ async function reply(page: Page, text: string) {
 const botTurns = (page: Page) => page.locator('[data-turn="bot"]');
 const userTurns = (page: Page) => page.locator('[data-turn="user"]');
 
-/** Walks the whole conversation and lands on Home. */
+/**
+ * Walks the whole conversation and lands on Home.
+ *
+ * Six answers now rather than three: the flow also asks what someone wants out
+ * of the app, what pulls them away and how long they can focus, because every
+ * one of those configures something. `answerPurpose` and friends are named
+ * here so a test that cares about one answer can read what it is passing.
+ */
 async function completeOnboarding(page: Page) {
   await reply(page, "Sam");
   await expect(botTurns(page)).toHaveCount(2, { timeout: 10_000 });
 
-  await reply(page, "finally learn to cook properly");
+  await reply(page, "get my evenings back");
   await expect(botTurns(page)).toHaveCount(3, { timeout: 10_000 });
 
-  await reply(page, "football and AI stuff");
+  await reply(page, "finally learn to cook properly");
   await expect(botTurns(page)).toHaveCount(4, { timeout: 10_000 });
+
+  await reply(page, "instagram and tiktok");
+  await expect(botTurns(page)).toHaveCount(5, { timeout: 10_000 });
+
+  await reply(page, "about 50 minutes");
+  await expect(botTurns(page)).toHaveCount(6, { timeout: 10_000 });
+
+  await reply(page, "football and AI stuff");
+  await expect(botTurns(page)).toHaveCount(7, { timeout: 10_000 });
 
   await page.getByRole("button", { name: /Nothing specific/i }).click();
   await expect(page.locator('nav[aria-label="Main"]')).toBeVisible({ timeout: 10_000 });
+}
+
+/** The three answers before interests, for tests that only care what comes after. */
+async function answerUpToInterests(page: Page) {
+  await reply(page, "Sam");
+  await reply(page, "get my evenings back");
+  await reply(page, "finally learn to cook properly");
+  await reply(page, "instagram and tiktok");
+  await reply(page, "about 50 minutes");
+  await expect(botTurns(page)).toHaveCount(6, { timeout: 10_000 });
 }
 
 test.describe("onboarding reads as a conversation", () => {
@@ -97,20 +123,55 @@ test.describe("onboarding reads as a conversation", () => {
     await reply(page, "Sam");
     await expect(botTurns(page)).toHaveCount(2, { timeout: 10_000 });
 
-    await reply(page, "finally learn to cook properly");
+    await reply(page, "get my evenings back");
     await expect(botTurns(page)).toHaveCount(3, { timeout: 10_000 });
 
+    await reply(page, "finally learn to cook properly");
+    await expect(botTurns(page)).toHaveCount(4, { timeout: 10_000 });
+
     // One user turn in, one bot turn back — never two.
-    await expect(userTurns(page)).toHaveCount(2);
+    await expect(userTurns(page)).toHaveCount(3);
   });
 
-  test("asks for the goal before it asks what to put in the feed", async ({ page }) => {
+  test("asks what you want out of it before it asks what to put in the feed", async ({ page }) => {
     await freshInstall(page);
     await reply(page, "Sam");
 
     // The bot is framed as helping you get somewhere before it collects
-    // anything, which is the whole reason the goal comes first.
-    await expect(botTurns(page).nth(1)).toContainText(/time going into instead/i);
+    // anything, which is the whole reason this comes first.
+    await expect(botTurns(page).nth(1)).toContainText(/what do you want out of this/i);
+
+    await reply(page, "get my evenings back");
+    await expect(botTurns(page).nth(2)).toContainText(/trying to get to/i, { timeout: 10_000 });
+  });
+
+  test("asks what pulls you away, and says which apps it will lock", async ({ page }) => {
+    await freshInstall(page);
+    await reply(page, "Sam");
+    await reply(page, "get my evenings back");
+    await reply(page, "finally learn to cook properly");
+    await expect(botTurns(page).nth(3)).toContainText(/pulling you away/i, { timeout: 10_000 });
+
+    // Naming apps back is what proves the answer landed somewhere.
+    await reply(page, "instagram and tiktok");
+    await expect(botTurns(page).nth(4)).toContainText(/Instagram/i, { timeout: 10_000 });
+    await expect(botTurns(page).nth(4)).toContainText(/TikTok/i);
+  });
+
+  test("re-asks the focus span rather than recording a number nobody said", async ({ page }) => {
+    await freshInstall(page);
+    await reply(page, "Sam");
+    await reply(page, "get my evenings back");
+    await reply(page, "finally learn to cook properly");
+    await reply(page, "instagram and tiktok");
+    await expect(botTurns(page)).toHaveCount(5, { timeout: 10_000 });
+
+    await reply(page, "not very long honestly");
+    await expect(botTurns(page).nth(5)).toContainText(/number of minutes/i, { timeout: 10_000 });
+
+    // Still on the same question — a re-ask does not advance the flow.
+    await reply(page, "about 50 minutes");
+    await expect(botTurns(page).nth(6)).toContainText(/50 minutes/i, { timeout: 10_000 });
   });
 
   test("ties the next question back to what you said", async ({ page }) => {
@@ -118,33 +179,29 @@ test.describe("onboarding reads as a conversation", () => {
     await reply(page, "Sam");
     await expect(botTurns(page).nth(1)).toContainText("Sam");
 
-    await reply(page, "finally learn to cook properly");
+    await reply(page, "get my evenings back");
     // The reflection quotes them rather than replying "Noted."
-    await expect(botTurns(page).nth(2)).toContainText(/cook/i);
+    await expect(botTurns(page).nth(2)).toContainText(/evening/i, { timeout: 10_000 });
   });
 
   test("takes interests as free text, and asks about them once", async ({ page }) => {
     await freshInstall(page);
-    await reply(page, "Sam");
-    await reply(page, "finally learn to cook properly");
-    await expect(botTurns(page)).toHaveCount(3, { timeout: 10_000 });
+    await answerUpToInterests(page);
 
     // Typed in their own words — no chip required — and mapped onto categories.
     await reply(page, "football and AI stuff");
-    await expect(botTurns(page).nth(3)).toContainText(/Sports/i, { timeout: 10_000 });
-    await expect(botTurns(page).nth(3)).toContainText(/Tech/i);
+    await expect(botTurns(page).nth(6)).toContainText(/Sports/i, { timeout: 10_000 });
+    await expect(botTurns(page).nth(6)).toContainText(/Tech/i);
 
     // ONE follow-up covering everything. The old flow asked per category.
-    await expect(botTurns(page).nth(3)).toContainText(/Anything particular/i);
+    await expect(botTurns(page).nth(6)).toContainText(/Anything particular/i);
     await reply(page, "Arsenal");
     await expect(page.locator('nav[aria-label="Main"]')).toBeVisible({ timeout: 10_000 });
   });
 
   test("chips fill the box rather than submitting for you", async ({ page }) => {
     await freshInstall(page);
-    await reply(page, "Sam");
-    await reply(page, "finally learn to cook properly");
-    await expect(botTurns(page)).toHaveCount(3, { timeout: 10_000 });
+    await answerUpToInterests(page);
 
     const before = await userTurns(page).count();
     await page.getByRole("button", { name: "Tech", exact: true }).click();
@@ -157,9 +214,7 @@ test.describe("onboarding reads as a conversation", () => {
 
   test("the refinement is skippable", async ({ page }) => {
     await freshInstall(page);
-    await reply(page, "Sam");
-    await reply(page, "finally learn to cook properly");
-    await expect(botTurns(page)).toHaveCount(3, { timeout: 10_000 });
+    await answerUpToInterests(page);
     await reply(page, "football and AI stuff");
 
     await page.getByRole("button", { name: /Nothing specific/i }).click();
@@ -178,6 +233,12 @@ test.describe("onboarding reads as a conversation", () => {
     expect(profile.profile.name).toBe("Sam");
     expect(profile.profile.goal).toContain("cook");
     expect(profile.profile.interests).toEqual(expect.arrayContaining(["tech", "sports"]));
+
+    // The conversation configures the app rather than only describing it —
+    // this is the difference between a profile and a setup.
+    expect(profile.sessionMinutes).toBe(50);
+    expect(profile.apps.map((a: { id: string }) => a.id).sort()).toEqual(["ig", "tt"]);
+    expect(profile.projects[0].title).toContain("cook");
 
     await page.reload();
     await expect(page.locator('nav[aria-label="Main"]')).toBeVisible({ timeout: 15_000 });
