@@ -329,6 +329,15 @@ test.describe("daily digest", () => {
     });
     await page.getByRole("button", { name: /caught up/i }).click();
 
+    // Closing the digest out is what opens "What's today about?", so the sheet
+    // is standing between here and the tab bar. Declining it is a real user
+    // path, and going through it rather than around it keeps that exit covered:
+    // if the sheet ever loses its dismissal, this fails instead of hanging.
+    const focus = page.getByRole("dialog", { name: /What.s today about/i });
+    await expect(focus).toBeVisible();
+    await page.getByRole("button", { name: /Not today/i }).click();
+    await expect(focus).toBeHidden();
+
     await page.getByRole("button", { name: /^Home/ }).click();
     await expect(card).toContainText(/caught up/i);
   });
